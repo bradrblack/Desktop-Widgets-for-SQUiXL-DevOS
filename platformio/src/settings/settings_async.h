@@ -177,6 +177,26 @@ struct Config_widget_rss_feed
 		}
 };
 
+// Symbols must match Yahoo Finance's own ticker format - the Markets card
+// fetches quotes from Yahoo's unauthenticated "spark" endpoint, so whatever
+// is entered here is passed straight through as-is. Defaults match what
+// the card originally shipped with hardcoded.
+struct Config_widget_stocks
+{
+		String label1 = "CAD/US";
+		String ticker1 = "CADUSD=X";
+		String label2 = "Apple";
+		String ticker2 = "AAPL";
+		String label3 = "Rivian";
+		String ticker3 = "RIVN";
+		String label4 = "BCE";
+		String ticker4 = "BCE.TO";
+		String label5 = "TSX";
+		String ticker5 = "^GSPTSE";
+		String label6 = "S&P";
+		String ticker6 = "^GSPC";
+};
+
 struct Config
 {
 		int ver = 1;
@@ -229,6 +249,7 @@ struct Config
 		Config_widget_battery battery;
 		Config_widget_open_weather open_weather;
 		Config_widget_rss_feed rss_feed;
+		Config_widget_stocks stocks;
 		Config_audio audio;
 		Config_mqtt mqtt;
 		Config_haptics haptics;
@@ -317,6 +338,8 @@ class Settings
 			settings_groups.push_back({"Location Settings", SettingType::WEB});
 
 			settings_groups.push_back({"Expansion Settings", SettingType::WIDGET, "I2C Expansion Port Settings"});
+
+			settings_groups.push_back({"Markets Settings", SettingType::WIDGET, "Configure up to 6 symbols shown on the Markets card. Tickers must match Yahoo Finance's own symbol format (search finance.yahoo.com to confirm one before entering it here) - e.g. AAPL for Apple, BCE.TO for a Toronto Stock Exchange listing, ^GSPC for the S&P 500 index, or CADUSD=X for a currency pair. Leave a ticker blank to skip that row."});
 		}
 
 		void init();
@@ -410,6 +433,20 @@ class Settings
 		// Expansion
 		SettingsOptionBool expansion_bme_address{&config.expansion.bme280_address, 9, "I2C Address", "0x77", "0x76"};
 		SettingsOptionBool expansion_bme_installed{&config.expansion.bme280_installed, 9, "Connected", "NO", "YES"};
+
+		// Markets - see Config_widget_stocks for the Yahoo Finance ticker format note
+		SettingsOptionString stocks_label1{&config.stocks.label1, 10, "Symbol 1 Label"};
+		SettingsOptionString stocks_ticker1{&config.stocks.ticker1, 10, "Symbol 1 Ticker", 0, -1, "", false};
+		SettingsOptionString stocks_label2{&config.stocks.label2, 10, "Symbol 2 Label"};
+		SettingsOptionString stocks_ticker2{&config.stocks.ticker2, 10, "Symbol 2 Ticker", 0, -1, "", false};
+		SettingsOptionString stocks_label3{&config.stocks.label3, 10, "Symbol 3 Label"};
+		SettingsOptionString stocks_ticker3{&config.stocks.ticker3, 10, "Symbol 3 Ticker", 0, -1, "", false};
+		SettingsOptionString stocks_label4{&config.stocks.label4, 10, "Symbol 4 Label"};
+		SettingsOptionString stocks_ticker4{&config.stocks.ticker4, 10, "Symbol 4 Ticker", 0, -1, "", false};
+		SettingsOptionString stocks_label5{&config.stocks.label5, 10, "Symbol 5 Label"};
+		SettingsOptionString stocks_ticker5{&config.stocks.ticker5, 10, "Symbol 5 Ticker", 0, -1, "", false};
+		SettingsOptionString stocks_label6{&config.stocks.label6, 10, "Symbol 6 Label"};
+		SettingsOptionString stocks_ticker6{&config.stocks.ticker6, 10, "Symbol 6 Ticker", 0, -1, "", false};
 
 		// ==== ASYNC SUPPORT ====
 	public:

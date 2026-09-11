@@ -35,32 +35,38 @@ namespace
 
 void widgetStockList::init_symbols()
 {
-	struct SymbolDef
+	struct SymbolRef
 	{
-			const char *label;
-			const char *ticker;
+			const String &label;
+			const String &ticker;
 	};
 
-	static const SymbolDef defs[] = {
-		{"CAD/US", "CADUSD=X"},
-		{"Apple", "AAPL"},
-		{"Rivian", "RIVN"},
-		{"BCE", "BCE.TO"},
-		{"TSX", "^GSPTSE"},
-		{"S&P", "^GSPC"},
+	// Configurable via the web portal's Markets Settings (SettingsOption
+	// fields declared in settings_async.h) - tickers must be in Yahoo
+	// Finance's own symbol format since that's the API this card queries.
+	const SymbolRef defs[] = {
+		{settings.config.stocks.label1, settings.config.stocks.ticker1},
+		{settings.config.stocks.label2, settings.config.stocks.ticker2},
+		{settings.config.stocks.label3, settings.config.stocks.ticker3},
+		{settings.config.stocks.label4, settings.config.stocks.ticker4},
+		{settings.config.stocks.label5, settings.config.stocks.ticker5},
+		{settings.config.stocks.label6, settings.config.stocks.ticker6},
 	};
 
 	std::string joined_symbols;
-	for (const SymbolDef &def : defs)
+	for (const SymbolRef &def : defs)
 	{
+		if (def.ticker.length() < 1)
+			continue;
+
 		StockQuote q;
-		q.label = def.label;
-		q.ticker = def.ticker;
+		q.label = def.label.c_str();
+		q.ticker = def.ticker.c_str();
 		quotes.push_back(q);
 
 		if (!joined_symbols.empty())
 			joined_symbols += ",";
-		joined_symbols += url_encode_symbol(def.ticker);
+		joined_symbols += url_encode_symbol(def.ticker.c_str());
 	}
 
 	// The "spark" endpoint returns every symbol in one response, so this is a

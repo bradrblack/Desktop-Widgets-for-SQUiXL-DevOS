@@ -70,6 +70,20 @@ bool WifiController::connect()
 {
 	if (WiFi.status() == WL_CONNECTED)
 	{
+		// OTA setup normally happens further down, after this function
+		// actually performs a connection - but if the radio's own
+		// background auto-reconnect already re-established the link before
+		// this function was ever called (or on any later call once already
+		// connected), that path is skipped entirely and OTA silently never
+		// gets initialized for the rest of the boot. Check here too so it's
+		// not tied to this function having done the connecting itself.
+		if (!is_ota_setup)
+		{
+			start_ota();
+			is_ota_setup = true;
+			Serial.printf("OTA: ready as %s.local (no password)\n", settings.config.mdns_name.c_str());
+		}
+
 		wifi_busy = false;
 		return true;
 	}
@@ -86,6 +100,13 @@ bool WifiController::connect()
 
 	if (WiFi.status() == WL_CONNECTED)
 	{
+		if (!is_ota_setup)
+		{
+			start_ota();
+			is_ota_setup = true;
+			Serial.printf("OTA: ready as %s.local (no password)\n", settings.config.mdns_name.c_str());
+		}
+
 		wifi_busy = false;
 		return true;
 	}

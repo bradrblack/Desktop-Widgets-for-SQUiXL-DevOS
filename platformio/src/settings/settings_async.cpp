@@ -16,8 +16,9 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_screenshot, temperature, 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_haptics, enabled, trigger_on_boot, trigger_on_alarm, trigger_on_hour, trigger_on_event, trigger_on_wake, trigger_on_longpress, trigger_on_charge);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_widget_open_weather, enabled, api_key, poll_frequency, units_metric);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_widget_rss_feed, enabled, feed_url, poll_frequency);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_widget_stocks, label1, ticker1, label2, ticker2, label3, ticker3, label4, ticker4, label5, ticker5, label6, ticker6);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_expansion, bme280_address, bme280_installed);
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config, first_time, current_screen, ota_start, wifi_tx_power, wifi_options, current_wifi_station, wifi_check_for_updates, use_local_dns, mdns_name, case_color, ntp_server, city, state, country, lon, lat, utc_offset, time_24hour, time_dateformat, volume, current_background, backlight_time_step_battery, backlight_time_step_vbus, sleep_vbus, sleep_battery, open_weather, rss_feed, audio, mqtt, haptics, screenshot, user_wallpaper, location);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config, first_time, current_screen, ota_start, wifi_tx_power, wifi_options, current_wifi_station, wifi_check_for_updates, use_local_dns, mdns_name, case_color, ntp_server, city, state, country, lon, lat, utc_offset, time_24hour, time_dateformat, volume, current_background, backlight_time_step_battery, backlight_time_step_vbus, sleep_vbus, sleep_battery, open_weather, rss_feed, stocks, audio, mqtt, haptics, screenshot, user_wallpaper, location);
 
 static uint32_t min_clk_freq = 6000000;
 static uint32_t max_clk_freq = 7000000;
@@ -402,6 +403,19 @@ void Settings::init()
 	widget_rss_enabled.register_option();
 	widget_rss_feed_url.register_option();
 	widget_rss_poll_interval.register_option();
+
+	stocks_label1.register_option();
+	stocks_ticker1.register_option();
+	stocks_label2.register_option();
+	stocks_ticker2.register_option();
+	stocks_label3.register_option();
+	stocks_ticker3.register_option();
+	stocks_label4.register_option();
+	stocks_ticker4.register_option();
+	stocks_label5.register_option();
+	stocks_ticker5.register_option();
+	stocks_label6.register_option();
+	stocks_ticker6.register_option();
 
 	// Expansion
 	expansion_bme_address.register_option();
