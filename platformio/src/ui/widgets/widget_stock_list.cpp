@@ -115,6 +115,16 @@ void widgetStockList::prefetch()
 	maybe_fetch();
 }
 
+void widgetStockList::reload_symbols()
+{
+	quotes.clear();
+	batch_url.clear();
+	next_update = 0;
+	has_data = false;
+	is_fetching = false;
+	should_redraw = true;
+}
+
 void widgetStockList::process_quote_data(bool success, const String &response)
 {
 	bool ok = true;

@@ -4,6 +4,9 @@
 #include "settings/settings_async.h"
 #include "web/wifi_controller.h"
 #include "ui/ui_screen.h"
+#include "ui/widgets/widget_stock_list.h"
+
+extern widgetStockList *widget_stock_list;
 
 // HTML Templates
 #include "web/www/www_general.h"
@@ -655,6 +658,13 @@ bool WebServer::start()
 			// // Buzzer({{2000, 20}});
 			// audio.play_dock();
 			settings.save(true);
+
+			if (group.name == "Markets Settings" && widget_stock_list != nullptr)
+			{
+				// Otherwise the card keeps using whatever symbols it loaded
+				// at boot until the device is rebooted.
+				widget_stock_list->reload_symbols();
+			}
 
 			// const char *return_data = generate_settings_html(group_id).c_str();
 			String html = generate_settings_html(group_id);

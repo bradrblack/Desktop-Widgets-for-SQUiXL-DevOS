@@ -31,6 +31,11 @@ class widgetStockList : public ui_window
 		// the Markets card sits empty until the user happens to swipe to it.
 		void prefetch();
 
+		// Drops the cached symbol list so the next maybe_fetch() rebuilds it
+		// from current settings and re-fetches immediately, instead of
+		// requiring a reboot to pick up a config change saved in the portal.
+		void reload_symbols();
+
 	private:
 		std::vector<StockQuote> quotes;
 		psram_string batch_url;
