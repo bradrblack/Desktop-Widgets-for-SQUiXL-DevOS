@@ -48,34 +48,67 @@ void ui_screen::calc_new_tints()
 
 void ui_screen::create_buffers()
 {
+	unsigned long t0 = millis();
+	bool made_back = false, made_content = false;
+
 	if (!_sprite_back.getBuffer())
 	{
-		_sprite_back.create(480, 480, back_color);
+		if (_sprite_back.create(480, 480, back_color))
+			made_back = true;
+		else
+			Serial.printf("create_buffers %p: FAILED to allocate _sprite_back (480x480) - largest PSRAM chunk free=%u\n", (void *)this, heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
 		// _sprite_back.fillScreen(back_color);
 		// _sprite_back.fillRect(0, 0, 480, 480, back_color);
 	}
 
 	if (!_sprite_content.getBuffer())
 	{
-		_sprite_content.create(480, 480, TFT_MAGENTA);
+		if (_sprite_content.create(480, 480, TFT_MAGENTA))
+			made_content = true;
+		else
+			Serial.printf("create_buffers %p: FAILED to allocate _sprite_content (480x480) - largest PSRAM chunk free=%u\n", (void *)this, heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
 		// _sprite_content.fillRect(0, 0, 480, 480, TFT_MAGENTA);
 		// _sprite_content.fillScreen(TFT_MAGENTA);
+	}
+
+	if (made_back || made_content)
+	{
+		String msg = "create_buffers " + String((unsigned long)this, HEX) + " back=" + String(made_back) + " content=" + String(made_content) + " took " + String(millis() - t0) + "ms free_psram=" + String(ESP.getFreePsram());
+		Serial.println(msg);
 	}
 }
 
 void ui_screen::clear_buffers()
 {
+	unsigned long t0 = millis();
+	bool freed_back = false, freed_content = false;
+
 	if (!dont_destroy_back_sprite && _sprite_back.getBuffer())
+	{
 		_sprite_back.release();
+		freed_back = true;
+	}
 
 	if (_sprite_content.getBuffer())
+	{
 		_sprite_content.release();
+		freed_content = true;
+	}
 
 	if (_sprite_drag.getBuffer())
 		_sprite_drag.release();
 
 	if (_sprite_mixed.getBuffer())
 		_sprite_mixed.release();
+
+	if (freed_back || freed_content)
+	{
+		String msg = "clear_buffers " + String((unsigned long)this, HEX) + " back=" + String(freed_back) + " content=" + String(freed_content) + " took " + String(millis() - t0) + "ms";
+		Serial.println(msg);
+	}
+
+	if (is_dragging)
+		Serial.printf("clear_buffers %p: INTERRUPTED an active drag (is_dragging was true)\n", (void *)this);
 
 	is_dragging = false;
 }
@@ -400,7 +433,13 @@ bool ui_screen::position_children(bool force_children)
 					if (force_children)
 						child->set_dirty(true);
 
-					if (child->redraw(32))
+					unsigned long t0 = millis();
+					bool r = child->redraw(32);
+					unsigned long dur = millis() - t0;
+					if (dur > 100)
+						Serial.printf("position_children: screen=%p child #%d redraw took %lums\n", (void *)this, w, dur);
+
+					if (r)
 						child_dirty = true;
 				}
 			}
@@ -473,11 +512,24 @@ bool ui_screen::process_touch(touch_event_t touch_event)
 
 		if (!is_dragging)
 		{
+			// Reject sub-threshold jitter before committing to the expensive
+			// per-drag setup below (which allocates ~460KB PSRAM buffers for
+			// up to 2 neighbour screens). Without this, touch noise - most
+			// often right as a finger lifts off at the end of a swipe -
+			// could get classified as a brand new drag on nearly every
+			// sample, each one immediately cancelled (cancel_drag() frees
+			// those same buffers via clean_neighbour_sprites()), thrashing
+			// alloc/free in a tight loop for as long as the noise lasted.
+			// That was the actual cause of the multi-second "frozen screen"
+			// reports - not rendering or network at all.
+			if (abs(touch_event.d_x) < 3 && abs(touch_event.d_y) < 3)
+				return false;
+
 			// Serial.println("Setup for new drag");
 
 			// drag_step_timer = millis();
 
-			// Serial.printf("starting drag @ %u\n", drag_step_timer);
+			Serial.printf("process_touch %p: NEW drag detected (was is_dragging=false)\n", (void *)this);
 
 			is_dragging = true;
 			is_drag_blended = false;
@@ -494,12 +546,18 @@ bool ui_screen::process_touch(touch_event_t touch_event)
 				drag_neighbours[1] = get_navigation(Directions::DOWN);
 			}
 
-			// If we have a neighbour we are going to drag, ensure it has it's sprites initialised so we can draw it
-			if (drag_neighbours[0] != nullptr)
-				drag_neighbours[0]->setup_draggable_neighbour(true);
-
-			if (drag_neighbours[1] != nullptr)
-				drag_neighbours[1]->setup_draggable_neighbour(true);
+			// Only eagerly allocate the neighbour the gesture is actually
+			// heading toward - each neighbour needs its own full pair of
+			// 480x480 PSRAM buffers (~920KB), and pre-allocating BOTH on
+			// every drag start (most of which never reverse direction) was
+			// doubling peak PSRAM pressure at exactly the moment it's most
+			// contended, which is what was causing screens to intermittently
+			// come up grey/blank. If the user does reverse mid-drag, the
+			// other neighbour gets lazily set up on demand in
+			// draw_draggable() below.
+			ui_screen *primary_neighbour = (touch_event.d_x < 0 || touch_event.d_y < 0) ? drag_neighbours[0] : drag_neighbours[1];
+			if (primary_neighbour != nullptr)
+				primary_neighbour->setup_draggable_neighbour(true);
 
 			// we only need this sprite temporarly if we are blending content
 			if (!_sprite_drag.getBuffer())
@@ -742,24 +800,52 @@ void ui_screen::finish_drag(Directions direction, int16_t dx, int16_t dy)
 
 	squixl.switching_screens = true;
 
+	unsigned long t_drag = millis();
 	while (drag_x != to_x || drag_y != to_y)
 	{
 		drag_x = round(drag_x + (to_x - drag_x) / 1.3);
 		drag_y = round(drag_y + (to_y - drag_y) / 1.3);
 		draw_draggable();
 	}
+	if (millis() - t_drag > 300)
+		Serial.printf("finish_drag: drag animation loop took %lums\n", millis() - t_drag);
 
 	is_dragging = false;
 
+	unsigned long t_close = millis();
 	squixl.current_screen()->about_to_close_screen();
+	if (millis() - t_close > 100)
+		Serial.printf("finish_drag: about_to_close_screen took %lums\n", millis() - t_close);
 
+	// Free the outgoing screen's neighbour buffers BEFORE the incoming screen
+	// tries to allocate its own. Right at the end of a drag, up to 3 other
+	// screens can still be holding full 480x480 PSRAM buffer pairs
+	// simultaneously - allocating the new current screen's buffers first
+	// (the old order) meant asking for a fresh ~460KB chunk at the exact
+	// moment PSRAM was most fragmented, which could silently fail and leave
+	// the screen blank until some later, unrelated create_buffers() call
+	// happened to retry it.
+	unsigned long t_clean = millis();
+	navigation[(int)direction]->clean_neighbour_sprites();
+	if (millis() - t_clean > 100)
+		Serial.printf("finish_drag: clean_neighbour_sprites took %lums\n", millis() - t_clean);
+
+	unsigned long t_set = millis();
 	squixl.set_current_screen(navigation[(int)direction]);
-	squixl.current_screen()->clean_neighbour_sprites();
+	if (millis() - t_set > 100)
+		Serial.printf("finish_drag: set_current_screen took %lums\n", millis() - t_set);
 
+	unsigned long t_show = millis();
 	squixl.current_screen()->about_to_show_screen();
+	if (millis() - t_show > 100)
+		Serial.printf("finish_drag: about_to_show_screen took %lums\n", millis() - t_show);
 
 	squixl.switching_screens = false;
+
+	unsigned long t_refresh = millis();
 	squixl.current_screen()->refresh(true);
+	if (millis() - t_refresh > 100)
+		Serial.printf("finish_drag: refresh(true) took %lums\n", millis() - t_refresh);
 }
 
 void ui_screen::clean_neighbour_sprites()
@@ -792,14 +878,24 @@ void ui_screen::draw_draggable()
 				if (drag_neighbours[1] == nullptr)
 					_sprite_drag.fillRect(0, 0, drag_x, 480, 0);
 				else
+				{
+					// Reversed mid-drag into the neighbour we didn't eagerly
+					// allocate at drag start - set it up now, on demand.
+					if (!drag_neighbours[1]->_sprite_content.getBuffer())
+						drag_neighbours[1]->setup_draggable_neighbour(true);
 					drag_neighbours[1]->draw_draggable_neighbour(&_sprite_drag, drag_x - 480, 0);
+				}
 			}
 			else
 			{
 				if (drag_neighbours[0] == nullptr)
 					_sprite_drag.fillRect(480 - abs(drag_x), 0, abs(drag_x), 480, 0);
 				else
+				{
+					if (!drag_neighbours[0]->_sprite_content.getBuffer())
+						drag_neighbours[0]->setup_draggable_neighbour(true);
 					drag_neighbours[0]->draw_draggable_neighbour(&_sprite_drag, drag_x + 480, 0);
+				}
 			}
 		}
 		else
@@ -809,14 +905,22 @@ void ui_screen::draw_draggable()
 				if (drag_neighbours[1] == nullptr)
 					_sprite_drag.fillRect(0, 0, 480, drag_y, 0);
 				else
+				{
+					if (!drag_neighbours[1]->_sprite_content.getBuffer())
+						drag_neighbours[1]->setup_draggable_neighbour(true);
 					drag_neighbours[1]->draw_draggable_neighbour(&_sprite_drag, 0, drag_y - 480);
+				}
 			}
 			else
 			{
 				if (drag_neighbours[0] == nullptr)
 					_sprite_drag.fillRect(0, 480 - abs(drag_y), 480, abs(drag_y), 0);
 				else
+				{
+					if (!drag_neighbours[0]->_sprite_content.getBuffer())
+						drag_neighbours[0]->setup_draggable_neighbour(true);
 					drag_neighbours[0]->draw_draggable_neighbour(&_sprite_drag, 0, drag_y + 480);
+				}
 			}
 		}
 
@@ -844,6 +948,7 @@ void ui_screen::setup_draggable_neighbour(bool state)
 {
 	if (state)
 	{
+		Serial.printf("setup_draggable_neighbour(true) on %p\n", (void *)this);
 		create_buffers();
 		if (position_children(true))
 		{

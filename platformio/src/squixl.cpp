@@ -159,12 +159,13 @@ void SQUiXL::process_backlight_dimmer()
 	{
 		backlight_dimmer_timer = millis();
 
-		// if (is_5V_detected && !settings.config.sleep_vbus)
-		// {
-		// 	// Never dimm the backlight or go to sleep when powered from 5V
-		// 	// unless the user selected dimming on 5V in settings
-		// 	return;
-		// }
+		if (is_5V_detected && !settings.config.sleep_vbus)
+		{
+			// Never dim the backlight or go to sleep when powered from 5V
+			// (an always-on countertop dashboard has no battery to save)
+			// unless the user explicitly opted into "Sleep On 5V" in settings.
+			return;
+		}
 
 		if (current_backlight_pwm == 0)
 		{
@@ -198,13 +199,13 @@ void SQUiXL::set_wallpaper_index(uint8_t index)
 void SQUiXL::loadPNG_into(umgfx::UM_GFX_Canvas *sprite, int start_x, int start_y, const void *image_data, int image_data_size)
 {
 	int w, h, bpp;
-	// Serial.printf("PNG load start (%d bytes) at %d,%d\n", image_data_size, start_x, start_y);
+	Serial.printf("PNG load start (%d bytes) at %d,%d\n", image_data_size, start_x, start_y);
 	if (pd.getPNGInfo(&w, &h, &bpp, image_data, image_data_size))
 	{
-		// Serial.printf("PNG info resolved: %dx%d @ %d bpp\n", w, h, bpp);
+		Serial.printf("PNG info resolved: %dx%d @ %d bpp, calling loadPNG...\n", w, h, bpp);
 		if (pd.loadPNG(sprite, start_x, start_y, image_data, image_data_size, 0))
 		{
-			// Serial.println("PNG loaded");
+			Serial.println("PNG loaded OK");
 			delay(55);
 		}
 		else

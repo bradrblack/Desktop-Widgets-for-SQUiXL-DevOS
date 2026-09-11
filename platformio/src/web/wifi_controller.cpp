@@ -6,9 +6,11 @@
  *
  */
 #include "web/wifi_controller.h"
+#include "web/wifi_ota.h"
 #include "settings/settings_async.h"
 #include "utils/json_psram.h"
 #include "utils/json_conversions.h"
+#include <WiFiClientSecure.h>
 
 using json = nlohmann::json;
 
@@ -66,6 +68,22 @@ bool WifiController::is_connected() { return (WiFi.status() == WL_CONNECTED); }
 // Connect to the WiFi network
 bool WifiController::connect()
 {
+	if (WiFi.status() == WL_CONNECTED)
+	{
+		wifi_busy = false;
+		return true;
+	}
+
+	// WiFi.status() can transiently report non-connected for a moment right
+	// after a scan (e.g. the WiFi manager screen scanning on every visit)
+	// even though the STA link is actually still fine. Give it a brief
+	// chance to settle on its own before paying for a full multi-station
+	// reconnect campaign below, which is a ~10+ second blocking call per
+	// saved network and was the real cause of the app-wide freezes reported
+	// after visiting WiFi manager.
+	for (int i = 0; i < 6 && WiFi.status() != WL_CONNECTED; i++)
+		delay(150);
+
 	if (WiFi.status() == WL_CONNECTED)
 	{
 		wifi_busy = false;
@@ -154,6 +172,13 @@ bool WifiController::connect()
 		// Serial.print("IP Address: ");
 		// Serial.println(WiFi.localIP());
 		WiFi.setHostname(settings.config.mdns_name.c_str());
+
+		if (!is_ota_setup)
+		{
+			start_ota();
+			is_ota_setup = true;
+			Serial.printf("OTA: ready as %s.local (no password)\n", settings.config.mdns_name.c_str());
+		}
 	}
 	else
 	{
@@ -189,7 +214,15 @@ void WifiController::loop()
 		wifi_callback_item result;
 		while (xQueueReceive(wifi_callback_queue, &result, 0) == pdTRUE)
 		{
+			// This runs synchronously on the main loop, unconditional of
+			// which screen is active - a slow callback here (parsing, icon
+			// decode, etc.) freezes rendering/touch/the web server for its
+			// entire duration regardless of what's on screen.
+			unsigned long t0 = millis();
 			result.callback(result.success, *result.response);
+			unsigned long dur = millis() - t0;
+			if (dur > 100)
+				Serial.printf("WifiController: callback took %lums\n", dur);
 			// delete result.response;
 		}
 	}
@@ -206,12 +239,16 @@ String WifiController::http_request(std::string url)
 	bool is_https = (url_lower.substring(0, 5) == "https");
 	std::string domain = extract_domain(url);
 
-	// Only resolve/cache/use IP for HTTP
+	// Resolve/cache the IP for BOTH http and https. This matters just as much
+	// for https: NetworkClientSecure::connect(host, ...) calls
+	// Network.hostByName() directly with no timeout at all, before any of the
+	// connect/handshake timeouts below even start counting - a slow/stalled
+	// DNS response there was an unbounded stall no other fix here covers.
+	// (For https we still connect via hostname, not this IP, so SNI/cert
+	// behavior is unaffected - this is purely a bounded pre-flight check.)
 	IPAddress resolved_ip;
 	bool ip_cached = false;
 
-	// For HTTP: try cache and/or resolve, else bail out
-	if (!is_https)
 	{
 		auto it = dns_cache.find(domain);
 		if (it != dns_cache.end())
@@ -240,10 +277,21 @@ String WifiController::http_request(std::string url)
 	// --- HTTP request ---
 	HTTPClient http;
 	http.setTimeout(5000);
+
+	WiFiClientSecure secure_client;
+
 	if (is_https)
 	{
 		Serial.printf("HTTPS request: %s\n", url.c_str());
-		http.begin(url.c_str());
+		// WiFiClientSecure defaults to a 120-SECOND handshake timeout, which
+		// http.setTimeout() above does not override (that only bounds the
+		// response read, not the TLS connect/handshake). A stalled handshake
+		// to a flaky external host would otherwise hang the wifi_task for up
+		// to two minutes, which is what was actually causing the long
+		// "frozen screen" reports - not screen/buffer rendering at all.
+		secure_client.setInsecure();
+		secure_client.setHandshakeTimeout(8);
+		http.begin(secure_client, url.c_str());
 	}
 	else
 	{
@@ -260,7 +308,10 @@ String WifiController::http_request(std::string url)
 		http.addHeader("Host", domain.c_str());
 	}
 
+	Serial.printf("http.GET() starting for %s (is_https=%d)\n", url.c_str(), is_https);
+	unsigned long t_get_start = millis();
 	http_code = http.GET();
+	Serial.printf("http.GET() returned %d after %lums\n", http_code, millis() - t_get_start);
 
 	if (http_code != 200)
 	{
@@ -421,6 +472,12 @@ void WifiController::wifi_task(void *pvParameters)
 // Function to add items to the queue
 void WifiController::add_to_queue(std::string url, _CALLBACK callback)
 {
+	if (debug_disable_queue)
+	{
+		Serial.printf("WifiController: add_to_queue SUPPRESSED for %s\n", url.c_str());
+		return;
+	}
+
 	wifi_task_item *item = new wifi_task_item;
 
 	item->url = url;

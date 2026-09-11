@@ -48,6 +48,12 @@ class WifiController
 		bool wifi_blocking_access = false;
 		bool wifi_prevent_disconnect = false;
 
+		// TEMPORARY diagnostic kill switch: when true, add_to_queue() is a
+		// no-op. Was used to isolate whether the dashboard fetch pipeline was
+		// the cause of the reported freezes - confirmed it was NOT (freezes
+		// continued with this true), so re-enabled.
+		bool debug_disable_queue = false;
+
 		uint8_t items_in_queue() { return queue_size; }
 
 	private:

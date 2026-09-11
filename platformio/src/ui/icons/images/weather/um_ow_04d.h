@@ -1,3 +1,4 @@
+#pragma once
 //
 // um_ow_04d
 // Data size = 3538 bytes

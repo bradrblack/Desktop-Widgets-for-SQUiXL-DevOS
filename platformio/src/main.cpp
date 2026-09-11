@@ -3,12 +3,11 @@
 #include "ui/icons/images/ui_icons.h"
 #include "ui/ui_screen.h"
 
-#include "ui/widgets/widget_openweather.h"
-#include "ui/widgets/widget_jokes.h"
-#include "ui/widgets/widget_rss_feeds.h"
-#include "ui/widgets/widget_time.h"
-#include "ui/widgets/widget_bme280.h"
-#include "ui/widgets/widget_battery.h"
+#include "ui/widgets/widget_stock_list.h"
+#include "ui/widgets/widget_weather_card.h"
+#include "ui/widgets/widget_clock_large.h"
+#include "ui/widgets/widget_status_pill.h"
+#include "ui/theme_dashboard.h"
 // #include "ui/widgets/widget_fps.h"
 
 #include "ui/controls/ui_control_button.h"
@@ -16,13 +15,13 @@
 #include "ui/controls/ui_control_slider.h"
 #include "ui/controls/ui_control_textbox.h"
 #include "ui/ui_label.h"
-#include "ui/ui_scrollarea_mqtt.h"
 #include "ui/ui_scrollarea_wifimanager.h"
 
 #include "ui/controls/ui_control_tabgroup.h"
 #include "ui/ui_dialogbox.h"
 
 #include "mqtt/mqtt.h"
+#include "web/wifi_ota.h"
 
 unsigned long next_background_swap = 0;
 unsigned long every_second = 0;
@@ -36,17 +35,17 @@ bool was_asleep = false;
 
 // UI stuff
 
-widgetJokes *widget_jokes = nullptr;
-widgetRSSFeeds *widget_rss_feeds = nullptr;
-widgetBME280 *widget_bme280 = nullptr;
-widgetTime *widget_time = nullptr;
-widgetOpenWeather *widget_ow = nullptr;
-widgetBattery *widget_battery = nullptr;
 // widgetFPS *widget_fps = nullptr;
 
+widgetStockList *widget_stock_list = nullptr;
+widgetWeatherCard *widget_weather_card = nullptr;
+widgetClockLarge *widget_clock_large = nullptr;
+widgetStatusPill *widget_status_pill_clock = nullptr;
+
 // ui_screen screen_wifi_setup;
-ui_screen *screen_main = nullptr;
-ui_screen *screen_mqtt = nullptr;
+ui_screen *screen_clock = nullptr;
+ui_screen *screen_dashboard = nullptr;
+ui_screen *screen_weather = nullptr;
 ui_screen *screen_settings = nullptr;
 ui_screen *screen_wifimanager = nullptr;
 
@@ -114,7 +113,6 @@ ui_control_textbox *text_mqtt_broker_password = nullptr;
 ui_control_button *button_dialogbox_test;
 
 ui_label label_version;
-ui_scrollarea_mqtt mqtt_notifications;
 
 // Wifi Manager Stuff
 
@@ -495,59 +493,6 @@ void create_ui_elements()
 	screen_settings->set_refresh_interval(0);
 
 	/*
-	Setup Main Screen
-	*/
-	screen_main = new ui_screen(); // Allocates into PSRAM
-	screen_main->setup(TFT_BLACK, true);
-
-	widget_battery = (widgetBattery *)heap_caps_malloc(sizeof(widgetBattery), MALLOC_CAP_SPIRAM);
-	widget_battery = new widgetBattery();
-	widget_battery->create(10, 0, TFT_WHITE);
-	widget_battery->set_refresh_interval(5000);
-	screen_main->add_child_ui(widget_battery);
-
-	widget_time = (widgetTime *)heap_caps_malloc(sizeof(widgetTime), MALLOC_CAP_SPIRAM);
-	widget_time = new widgetTime();
-	widget_time->create(470, 10, TFT_WHITE, TEXT_ALIGN::ALIGN_RIGHT);
-	widget_time->set_refresh_interval(1000);
-	screen_main->add_child_ui(widget_time);
-
-	// widget_fps = new widgetFPS();
-	// widget_fps->create(10, 68, TFT_WHITE);
-	// widget_fps->set_refresh_interval(1000);
-	// screen_main->add_child_ui(widget_fps);
-
-	widget_jokes = (widgetJokes *)heap_caps_malloc(sizeof(widgetJokes), MALLOC_CAP_SPIRAM);
-	widget_jokes = new widgetJokes();
-	widget_jokes->create(10, 370, 460, 100, TFT_BLACK, 12, 0, "JOKES");
-	widget_jokes->set_refresh_interval(5000);
-	// widget_jokes->set_delayed_frst_draw(4000);
-	screen_main->add_child_ui(widget_jokes);
-
-	widget_rss_feeds = (widgetRSSFeeds *)heap_caps_malloc(sizeof(widgetRSSFeeds), MALLOC_CAP_SPIRAM);
-	widget_rss_feeds = new widgetRSSFeeds();
-	widget_rss_feeds->create(10, 260, 460, 100, TFT_BLACK, 12, 0, "RSS FEEDS");
-	widget_rss_feeds->set_refresh_interval(5000);
-	// widget_rss_feeds.set_delayed_frst_draw(6000);
-	screen_main->add_child_ui(widget_rss_feeds);
-
-	widget_ow = (widgetOpenWeather *)heap_caps_malloc(sizeof(widgetOpenWeather), MALLOC_CAP_SPIRAM);
-	widget_ow = new widgetOpenWeather();
-	widget_ow->create(245, 80, 225, 72, TFT_BLACK, 16, 0, "CURRENT WEATHER");
-	widget_ow->set_refresh_interval(1000);
-	screen_main->add_child_ui(widget_ow);
-
-	/*
-	This widget will only show if a BME280 sensor is found
-	*/
-	widget_bme280 = (widgetBME280 *)heap_caps_malloc(sizeof(widgetBME280), MALLOC_CAP_SPIRAM);
-	widget_bme280 = new widgetBME280();
-	widget_bme280->create(245, 160, 225, 40, TFT_BLACK, 16, 0, "BME280");
-	widget_bme280->set_refresh_interval(5000); // we only want this to update every 5 seconds
-	widget_bme280->set_delayed_frst_draw(2000);
-	screen_main->add_child_ui(widget_bme280);
-
-	/*
 Setup WiFi Manager Screen
 */
 
@@ -658,26 +603,66 @@ Setup WiFi Manager Screen
 	screen_wifimanager->add_child_ui(button_wifimanager_join);
 
 	/*
-	Setup MQTT Screen
+	Setup Clock Screen - this is the new home screen (large HH:MM text clock +
+	iPhone-style status pill). widgetBigClock (seven-segment style) is left
+	unused in the codebase in case it finds a home elsewhere later.
 	*/
 
-	screen_mqtt = new ui_screen(); // Allocates into PSRAM
-	screen_mqtt->setup(darken565(0x5AEB, 0.5), true);
-	mqtt_notifications.create(20, 20, 440, 440, "MQTT Messages", TFT_GREY);
-	mqtt_notifications.set_draggable(DRAGGABLE::DRAG_VERTICAL);
-	mqtt_notifications.set_refresh_interval(5000);
+	screen_clock = new ui_screen(); // Allocates into PSRAM
+	screen_clock->setup(dashboard_theme::background, true);
 
-	// widget_mqtt_sensors.create(10, 120, 460, 240, TFT_BLACK, 12, 0, "MQTT Messages");
-	// widget_mqtt_sensors.set_refresh_interval(1000);
-	screen_mqtt->add_child_ui(&mqtt_notifications);
-	screen_mqtt->set_refresh_interval(50);
+	widget_clock_large = (widgetClockLarge *)heap_caps_malloc(sizeof(widgetClockLarge), MALLOC_CAP_SPIRAM);
+	widget_clock_large = new widgetClockLarge();
+	widget_clock_large->create(240, 200);
+	widget_clock_large->set_refresh_interval(500);
+	screen_clock->add_child_ui(widget_clock_large);
 
-	screen_main->set_navigation(Directions::RIGHT, screen_wifimanager, true);
-	screen_main->set_navigation(Directions::LEFT, screen_mqtt, true);
-	screen_main->set_navigation(Directions::DOWN, screen_settings, true);
+	widget_status_pill_clock = (widgetStatusPill *)heap_caps_malloc(sizeof(widgetStatusPill), MALLOC_CAP_SPIRAM);
+	widget_status_pill_clock = new widgetStatusPill();
+	widget_status_pill_clock->create(470, 20);
+	widget_status_pill_clock->set_refresh_interval(15000);
+	screen_clock->add_child_ui(widget_status_pill_clock);
+
+	screen_clock->set_refresh_interval(50);
+
+	/*
+	Setup Dashboard Screen (Markets) - swipe left from the clock home screen.
+	*/
+
+	screen_dashboard = new ui_screen(); // Allocates into PSRAM
+	screen_dashboard->setup(dashboard_theme::background, true);
+
+	widget_stock_list = (widgetStockList *)heap_caps_malloc(sizeof(widgetStockList), MALLOC_CAP_SPIRAM);
+	widget_stock_list = new widgetStockList();
+	widget_stock_list->create(20, 20, 440, 440, dashboard_theme::card, 32, 0, "MARKETS");
+	widget_stock_list->set_refresh_interval(2000);
+	screen_dashboard->add_child_ui(widget_stock_list);
+
+	screen_dashboard->set_refresh_interval(50);
+
+	/*
+	Setup Weather Screen (swipe left again from Markets)
+	*/
+
+	screen_weather = new ui_screen(); // Allocates into PSRAM
+	screen_weather->setup(dashboard_theme::background, true);
+
+	widget_weather_card = (widgetWeatherCard *)heap_caps_malloc(sizeof(widgetWeatherCard), MALLOC_CAP_SPIRAM);
+	widget_weather_card = new widgetWeatherCard();
+	widget_weather_card->create(20, 20, 440, 440, dashboard_theme::card, 32, 0, "WEATHER");
+	widget_weather_card->set_refresh_interval(2000);
+	screen_weather->add_child_ui(widget_weather_card);
+
+	screen_weather->set_refresh_interval(50);
+
+	screen_clock->set_navigation(Directions::RIGHT, screen_wifimanager, true);
+	screen_clock->set_navigation(Directions::DOWN, screen_settings, true);
+	screen_clock->set_navigation(Directions::LEFT, screen_dashboard, true);
+	screen_dashboard->set_navigation(Directions::LEFT, screen_weather, true);
 }
 
 bool wifi_requirements_checked = false;
+bool dashboard_prefetch_done = false;
 void check_wifi_requirements()
 {
 	wifi_requirements_checked = true;
@@ -850,8 +835,9 @@ void loop()
 
 		if (!settings.config.first_time)
 		{
-			squixl.set_current_screen(screen_main);
-			screen_main->show_user_background_jpg(!was_asleep);
+			// screen_clock is home now - it uses a flat muted background by
+			// design, not a photo wallpaper.
+			squixl.set_current_screen(screen_clock);
 		}
 		else
 		{
@@ -879,6 +865,28 @@ void loop()
 
 		webserver.web_event.send("hello", "refresh", millis());
 		return;
+	}
+
+	// Markets/Weather are no longer the home screen, so their first fetch
+	// would otherwise not start until the user happens to swipe to them.
+	// Kick it off as soon as we have WiFi credentials, regardless of which
+	// screen is showing.
+	//
+	// This deliberately does NOT wait for wifi_controller.is_connected() -
+	// nothing in this app actively calls WifiController::connect() until
+	// something calls add_to_queue() (connect() only runs as a side effect
+	// of the background wifi_task picking up a queued request). Gating this
+	// trigger on is_connected() meant it would only ever fire once WiFi
+	// happened to come up via the radio's own background auto-reconnect,
+	// which is untimed and was observed taking 50+ seconds after a cold
+	// boot - this call is what actually drives the connection attempt, so
+	// it needs to run first, not wait for a connection nothing is trying to
+	// establish yet.
+	if (!dashboard_prefetch_done && settings.has_wifi_creds())
+	{
+		dashboard_prefetch_done = true;
+		widget_stock_list->prefetch();
+		widget_weather_card->prefetch();
 	}
 
 	// If we have a current screen selected and it should be refreshed, refresh it!
@@ -948,8 +956,7 @@ void loop()
 		else if (squixl.current_screen() == nullptr)
 		{
 			// We were showing the first boot screen, so no current screen is set yet.
-			squixl.set_current_screen(screen_main);
-			screen_main->show_user_background_jpg(true);
+			squixl.set_current_screen(screen_clock);
 		}
 
 		if (wifiSetup.is_done())
@@ -965,6 +972,7 @@ void loop()
 
 	if (!wifiSetup.running() && wifi_controller.is_connected())
 	{
+		ArduinoOTA.handle();
 
 		if (rtc.requiresNTP && millis() - ntp_time_set > 10000)
 		{

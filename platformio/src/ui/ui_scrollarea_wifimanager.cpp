@@ -206,7 +206,11 @@ void ui_scrollarea_wifimanager::about_to_show_screen()
 	acceleration_y = 0;
 	// wifi_results_dirty = true;
 
-	if (!wifi_controller.is_scan_in_progress() && wifi_controller.scan_results().empty())
+	bool will_scan = !wifi_controller.is_scan_in_progress() && wifi_controller.scan_results().empty();
+	String msg = "wifimanager shown: scan_in_progress=" + String(wifi_controller.is_scan_in_progress()) + " cached_results=" + String(wifi_controller.scan_results().size()) + " starting_scan=" + String(will_scan);
+	Serial.println(msg);
+
+	if (will_scan)
 	{
 		wifi_controller.start_async_scan();
 	}
