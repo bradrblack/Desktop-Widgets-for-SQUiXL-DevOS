@@ -21,9 +21,16 @@ class widgetPlayPause : public ui_element
 		bool redraw(uint8_t fade_amount, int8_t tab_group = -1) override;
 		bool process_touch(touch_event_t touch_event) override;
 
+		// Forces the next redraw() to actually draw and report a change,
+		// even if carousel_playing hasn't changed since the last draw.
+		// Needed because the parent screen's canvas is fully wiped and
+		// recreated every time the screen is navigated away from and back
+		// to - see the call site in main.cpp's loop() for why this can't
+		// just be inferred from the parent's buffer pointer changing.
+		void force_redraw() { last_drawn_playing = !carousel_playing; }
+
 	private:
 		bool sprite_created = false;
 		unsigned long last_toggle_at = 0;
 		bool last_drawn_playing = false;
-		void *last_parent_buffer = nullptr;
 };

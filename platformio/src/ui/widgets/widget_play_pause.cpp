@@ -81,14 +81,13 @@ bool widgetPlayPause::redraw(uint8_t fade_amount, int8_t tab_group)
 	// Separately: the parent screen's own _sprite_content is fully released
 	// and recreated blank every time it's navigated away from and back to,
 	// even though this widget's own small sprite persists untouched. So
-	// "state didn't change" isn't enough to skip redrawing - also redraw
-	// whenever the parent's buffer address has changed since we last drew
-	// into it, or this icon silently vanishes after a swipe away and back.
-	void *parent_buffer = ui_parent->_sprite_content.getBuffer();
-	bool parent_buffer_changed = (parent_buffer != last_parent_buffer);
-	last_parent_buffer = parent_buffer;
-
-	if (carousel_playing == last_drawn_playing && !parent_buffer_changed)
+	// "state didn't change" isn't enough to skip redrawing on its own -
+	// main.cpp's loop() calls force_redraw() whenever the clock screen
+	// becomes current again, which is what actually covers that case (an
+	// earlier attempt compared the parent's buffer pointer instead, but
+	// PSRAM frequently hands back the same address after a same-size
+	// free-then-realloc, so that comparison could silently miss the swap).
+	if (carousel_playing == last_drawn_playing)
 		return false;
 	last_drawn_playing = carousel_playing;
 

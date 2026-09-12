@@ -992,6 +992,23 @@ void loop()
 		}
 	}
 
+	// screen_clock's whole _sprite_content canvas is fully released and
+	// recreated blank every time it's navigated away from and back to
+	// (ui_screen::clear_buffers()/create_buffers()), so widget_play_pause
+	// needs to redraw itself into it again even though its own toggle
+	// state hasn't changed - otherwise the icon it already drew is gone
+	// from the (now blank) canvas until something else happens to force a
+	// redraw. Detected here via the actual screen-change event rather than
+	// comparing the parent's buffer pointer, since PSRAM commonly hands
+	// back the same address after a same-size free-then-realloc.
+	static ui_screen *last_current_screen = nullptr;
+	ui_screen *now_current_screen = squixl.current_screen();
+	if (now_current_screen != last_current_screen && now_current_screen == screen_clock)
+	{
+		widget_play_pause->force_redraw();
+	}
+	last_current_screen = now_current_screen;
+
 	// Auto-advance the carousel while playing - walks navigation[LEFT] on a
 	// timer, same as swiping left would (clock -> dashboard -> weather ->
 	// clock -> ..., since weather's LEFT loops back to clock - see
