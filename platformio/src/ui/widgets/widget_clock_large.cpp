@@ -5,13 +5,13 @@
 #include "ui/theme_dashboard.h"
 #include "ui/ui_screen.h"
 
-void widgetClockLarge::create(int16_t center_x, int16_t y)
+void widgetClockLarge::create(int16_t center_x, int16_t center_y)
 {
 	_c = dashboard_theme::text_primary;
 
 	// Only this canvas is antialiased - setAntialias() defaults off, and
 	// this is the only place it's ever enabled, so no other widget's
-	// (1-bit) fonts are affected. UbuntuMono_Bold44pt7bAA is specifically
+	// (1-bit) fonts are affected. UbuntuMono_Bold88pt7bAA is specifically
 	// an 8-bit-coverage font meant for this mode; drawing it with
 	// antialias off (or drawing a normal 1-bit font with it on) would
 	// render garbage - see that font's own header comment.
@@ -25,7 +25,7 @@ void widgetClockLarge::create(int16_t center_x, int16_t y)
 	_w = (int16_t)(_glyph_w + 8);
 	_h = (int16_t)(_glyph_h + 8);
 	_x = center_x - _w / 2;
-	_y = y;
+	_y = center_y - _h / 2;
 
 	_sprite_content.create(_w, _h);
 }
