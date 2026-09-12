@@ -1,3 +1,19 @@
+
+# Desktop Gadgets for SQUiXL
+
+This is a fork of the Unexpected Maker SQUiXL project with three new full-screen widet panels:
+* Clock - with WiFi and Battery Status plus a play/pause control for auto-rotation of widgets
+* Markets - up to six stock/index/current symbols from Yahoo Finance
+* Weather - OpenWeather forecast
+* Calendar - Next six events in your Google Calendar
+* OTA progress bar - shows status during OTA firmware updates
+
+<img src="./clock.png" width="480"/>
+<img src="./markets.png" width="480"/>
+<img src="./weather.png" width="480"/>
+<img src="./close.png" width="480"/>
+<img src="./ota.jpg" width="480"/>
+
 # SQUiXL Official Shipping Firmware V2
 
 This is a new firmware revision with breaking API changes from firmware version 1.  [Firmware version 1](https://github.com/UnexpectedMaker/SQUiXL-DevOS/tree/firmware_v1) is still available if you want to keep using that, but if you have forked this project and added custom functionality, please see the firmware upgrade doc in the `/docs` folder.  
