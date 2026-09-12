@@ -890,6 +890,12 @@ void UM_GFX_Canvas::drawGlyph(const GFXfont &font, const GFXglyph &glyph, int16_
 	if (!_pixels)
 		return;
 
+	if (_antialias)
+	{
+		drawGlyphAA(font, glyph, x, y);
+		return;
+	}
+
 	if (_bg_color >= 0)
 	{
 		fillRect(x, y, glyph.width, glyph.height, _bg_color);
@@ -951,6 +957,59 @@ void UM_GFX_Canvas::drawGlyph(const GFXfont &font, const GFXglyph &glyph, int16_
 			bits <<= 1;
 		}
 		flush_run(glyph.width);
+	}
+}
+
+// font.bitmap here holds one coverage byte per pixel (0-255), row-major,
+// with no bit-packing or row padding - unlike the standard 1-bit-per-pixel
+// GFXfont format every other font uses. Only meant for a font specifically
+// generated in this format (see fonts/ubuntu_mono_bold_44pt_aa.h); enabled
+// per-canvas via setAntialias(true), which defaults off and isn't set
+// anywhere except that font's own widget, so this can't affect any other
+// font or canvas. Blends against bg (set via setTextColor()'s second
+// argument) rather than reading back the destination pixel, since the
+// caller already flat-fills the background before drawing text.
+void UM_GFX_Canvas::drawGlyphAA(const GFXfont &font, const GFXglyph &glyph, int16_t x, int16_t y)
+{
+	uint16_t bg565 = (_bg_color >= 0) ? static_cast<uint16_t>(_bg_color) : 0;
+	uint16_t fg565 = static_cast<uint16_t>(_fg_color);
+
+	int bg_r = (bg565 >> 11) & 0x1F, bg_g = (bg565 >> 5) & 0x3F, bg_b = bg565 & 0x1F;
+	int fg_r = (fg565 >> 11) & 0x1F, fg_g = (fg565 >> 5) & 0x3F, fg_b = fg565 & 0x1F;
+
+	uint32_t bo = glyph.bitmapOffset;
+
+	for (int yy = 0; yy < glyph.height; ++yy)
+	{
+		int dest_y = y + yy;
+		if (dest_y < 0 || dest_y >= _height)
+		{
+			bo += glyph.width;
+			continue;
+		}
+
+		for (int xx = 0; xx < glyph.width; ++xx)
+		{
+			uint8_t coverage = pgm_read_byte(&font.bitmap[bo++]);
+			int dest_x = x + xx;
+			if (dest_x < 0 || dest_x >= _width || coverage == 0)
+				continue;
+
+			uint16_t out;
+			if (coverage >= 255)
+			{
+				out = fg565;
+			}
+			else
+			{
+				int r = bg_r + (((fg_r - bg_r) * coverage) >> 8);
+				int g = bg_g + (((fg_g - bg_g) * coverage) >> 8);
+				int b = bg_b + (((fg_b - bg_b) * coverage) >> 8);
+				out = (uint16_t)((r << 11) | (g << 5) | b);
+			}
+
+			_pixels[dest_y * _width + dest_x] = encode565(out);
+		}
 	}
 }
 

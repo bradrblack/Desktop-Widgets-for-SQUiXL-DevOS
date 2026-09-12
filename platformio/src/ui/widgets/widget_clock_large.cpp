@@ -1,6 +1,6 @@
 #include "ui/widgets/widget_clock_large.h"
 
-#include "fonts/ubuntu_mono_bold_44pt.h"
+#include "fonts/ubuntu_mono_bold_44pt_aa.h"
 #include "peripherals/rtc.h"
 #include "ui/theme_dashboard.h"
 #include "ui/ui_screen.h"
@@ -9,8 +9,16 @@ void widgetClockLarge::create(int16_t center_x, int16_t y)
 {
 	_c = dashboard_theme::text_primary;
 
+	// Only this canvas is antialiased - setAntialias() defaults off, and
+	// this is the only place it's ever enabled, so no other widget's
+	// (1-bit) fonts are affected. UbuntuMono_Bold44pt7bAA is specifically
+	// an 8-bit-coverage font meant for this mode; drawing it with
+	// antialias off (or drawing a normal 1-bit font with it on) would
+	// render garbage - see that font's own header comment.
+	_sprite_content.setAntialias(true);
+
 	int tw, th;
-	calc_text_size("88:88", &UbuntuMono_Bold44pt7b, &tw, &th);
+	calc_text_size("88:88", &UbuntuMono_Bold44pt7bAA, &tw, &th);
 	_glyph_w = (uint16_t)tw;
 	_glyph_h = (uint16_t)th;
 
@@ -59,14 +67,16 @@ bool widgetClockLarge::redraw(uint8_t fade_amount, int8_t tab_group)
 		// within that fixed-size canvas each time, rather than always
 		// starting at the same left edge.
 		int actual_w, actual_h;
-		calc_text_size(_time_string.c_str(), &UbuntuMono_Bold44pt7b, &actual_w, &actual_h);
+		calc_text_size(_time_string.c_str(), &UbuntuMono_Bold44pt7bAA, &actual_w, &actual_h);
 		int16_t cursor_x = ((int16_t)(_glyph_w + 8) - (int16_t)actual_w) / 2;
 
 		// Rendered natively at the size it's displayed - no intermediate
 		// small canvas + upscale step needed now that the font itself is
-		// already the target size.
+		// already the target size. setTextColor()'s bg argument is what
+		// drawGlyphAA() blends edge pixels against, so it must match the
+		// fillRect() below exactly.
 		_sprite_content.fillRect(0, 0, _w, _h, dashboard_theme::background);
-		_sprite_content.setFreeFont(&UbuntuMono_Bold44pt7b);
+		_sprite_content.setFreeFont(&UbuntuMono_Bold44pt7bAA);
 		_sprite_content.setTextColor(dashboard_theme::text_primary, dashboard_theme::background);
 		_sprite_content.setCursor(cursor_x, _glyph_h + 2);
 		_sprite_content.print(_time_string.c_str());
