@@ -2,6 +2,8 @@
 
 #include "ui/theme_dashboard.h"
 
+#include <algorithm>
+
 using json = nlohmann::json;
 
 namespace
@@ -330,6 +332,31 @@ void widgetWeatherCard::process_forecast_data(bool success, const String &respon
 	if (ok && !new_days.empty())
 	{
 		days = new_days;
+
+		// The icon cache never evicted old entries, so over the widget's
+		// uptime it could grow to hold every distinct icon code ever seen
+		// (up to ~90KB across the 11 possible codes), needlessly adding to
+		// PSRAM fragmentation risk elsewhere - e.g. allocating a full
+		// 480x480 screen buffer for the next card during a swipe. Release
+		// whatever isn't needed for the forecast that just came in.
+		std::vector<String> needed;
+		for (const DayForecast &d : days)
+			if (!d.icon_name.isEmpty())
+				needed.push_back(d.icon_name);
+
+		for (auto it = icons.begin(); it != icons.end();)
+		{
+			if (std::find(needed.begin(), needed.end(), it->first) == needed.end())
+			{
+				it->second.release();
+				it = icons.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+
 		for (const DayForecast &d : days)
 			if (!d.icon_name.isEmpty())
 				load_icon(d.icon_name);
