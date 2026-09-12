@@ -1,8 +1,11 @@
 #include "ui/widgets/widget_weather_card.h"
 
+#include "peripherals/rtc.h"
 #include "ui/theme_dashboard.h"
 
 #include <algorithm>
+#include <cstdio>
+#include <ctime>
 
 using json = nlohmann::json;
 
@@ -15,16 +18,40 @@ namespace
 	// minutes instead of seconds.
 	constexpr unsigned long RETRY_INTERVAL_MS = 15000; // 15 sec
 
-	// Sakamoto's version of Zeller's congruence - 0=Sunday..6=Saturday.
-	int day_of_week(int y, int m, int d)
-	{
-		static const int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
-		if (m < 3)
-			y -= 1;
-		return (y + y / 4 - y / 100 + y / 400 + t[m - 1] + d) % 7;
-	}
-
 	const char *WEEKDAY_NAMES[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+
+	// OpenWeather's dt_txt is UTC with no timezone applied. Shifting by the
+	// location's UTC offset before bucketing by calendar date fixes two bugs
+	// that were the same root cause: day boundaries landing at local
+	// midnight instead of UTC midnight, and (more visibly) the first bucket
+	// being unconditionally labeled "Today" regardless of whether its date
+	// actually was today - if a forecast happens to be fetched late enough
+	// in the UTC day that OpenWeather's first entries are already dated
+	// UTC-tomorrow, that data got mislabeled "Today" and swallowed what
+	// should have been its own card, making the following day look like it
+	// arrived one weekday early (e.g. "Today" then "Monday", with the real
+	// Sunday never shown at all).
+	//
+	// mktime() is used purely to normalize calendar fields after adding the
+	// UTC offset (handling month/year rollover), not to interpret real time
+	// zones or DST - matches the same technique already used in
+	// widget_calendar.cpp for the same reason.
+	void utc_to_local(int y, int mo, int d, int h, int min, int offset_hours, int *out_y, int *out_mo, int *out_d, int *out_h, int *out_wday)
+	{
+		struct tm t = {};
+		t.tm_year = y - 1900;
+		t.tm_mon = mo - 1;
+		t.tm_mday = d;
+		t.tm_hour = h + offset_hours;
+		t.tm_min = min;
+		t.tm_isdst = -1;
+		mktime(&t);
+		*out_y = t.tm_year + 1900;
+		*out_mo = t.tm_mon + 1;
+		*out_d = t.tm_mday;
+		*out_h = t.tm_hour;
+		*out_wday = t.tm_wday;
+	}
 
 	// Fixed real-world-temperature (Celsius) to color stops, interpolated
 	// piecewise so the bar's color always means the same actual temperature
@@ -210,24 +237,30 @@ namespace
 
 			void finish_entry()
 			{
-				if (cur_dt_txt.size() < 10)
+				if (cur_dt_txt.size() < 16)
 					return;
 
-				std::string date = cur_dt_txt.substr(0, 10); // "YYYY-MM-DD"
-				std::string time_part = cur_dt_txt.size() >= 16 ? cur_dt_txt.substr(11, 5) : "";
+				int utc_y = atoi(cur_dt_txt.substr(0, 4).c_str());
+				int utc_mo = atoi(cur_dt_txt.substr(5, 2).c_str());
+				int utc_d = atoi(cur_dt_txt.substr(8, 2).c_str());
+				int utc_h = atoi(cur_dt_txt.substr(11, 2).c_str());
+				int utc_min = atoi(cur_dt_txt.substr(14, 2).c_str());
 
-				if (date != last_date)
+				int offset = settings.config.location.utc_offset;
+				if (offset < -12 || offset > 14) // 999 sentinel value = not configured yet
+					offset = 0;
+
+				int ly, lmo, ld, lh, lwday;
+				utc_to_local(utc_y, utc_mo, utc_d, utc_h, utc_min, offset, &ly, &lmo, &ld, &lh, &lwday);
+
+				char date[11];
+				snprintf(date, sizeof(date), "%04d-%02d-%02d", ly, lmo, ld);
+
+				if (last_date != date)
 				{
 					DayForecast day;
-					if (days.empty())
-						day.label = "Today";
-					else
-					{
-						int y = atoi(date.substr(0, 4).c_str());
-						int m = atoi(date.substr(5, 2).c_str());
-						int d = atoi(date.substr(8, 2).c_str());
-						day.label = WEEKDAY_NAMES[day_of_week(y, m, d)];
-					}
+					bool is_today = (ly == rtc.get_year() && lmo == rtc.get_month() && ld == rtc.get_day());
+					day.label = is_today ? "Today" : WEEKDAY_NAMES[lwday];
 					days.push_back(day);
 					last_date = date;
 				}
@@ -247,7 +280,9 @@ namespace
 					String icon = cur_icon.c_str();
 					if (icon.substring(0, 2) != "01" && icon.substring(0, 2) != "02")
 						icon = icon.substring(0, 2);
-					if (day.icon_name.isEmpty() || time_part == "12:00")
+					// Prefer the icon nearest local (not UTC) midday as the
+					// day's representative icon.
+					if (day.icon_name.isEmpty() || lh == 12)
 						day.icon_name = icon;
 				}
 
