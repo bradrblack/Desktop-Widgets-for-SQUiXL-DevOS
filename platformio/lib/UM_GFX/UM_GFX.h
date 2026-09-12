@@ -22,7 +22,13 @@
 #define _GFXFONT_H_
 typedef struct
 {
-		uint16_t bitmapOffset;
+		// uint32_t, not the original Adafruit_GFX uint16_t: an antialiased
+		// (8-bit coverage per pixel) font needs 8x the bitmap bytes of a
+		// standard 1-bit font for the same glyphs, which overflows 16 bits
+		// well before a useful antialiased point size. Every existing font
+		// header initializes this positionally ({offset, w, h, xAdv, xOff,
+		// yOff}), so widening it doesn't require touching any of them.
+		uint32_t bitmapOffset;
 		uint8_t width;
 		uint8_t height;
 		uint8_t xAdvance;
