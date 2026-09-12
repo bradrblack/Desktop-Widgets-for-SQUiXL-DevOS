@@ -1,5 +1,6 @@
 #include "ui/widgets/widget_clock_large.h"
 
+#include "fonts/ubuntu_mono_bold_44pt.h"
 #include "peripherals/rtc.h"
 #include "ui/theme_dashboard.h"
 #include "ui/ui_screen.h"
@@ -9,12 +10,12 @@ void widgetClockLarge::create(int16_t center_x, int16_t y)
 	_c = dashboard_theme::text_primary;
 
 	int tw, th;
-	calc_text_size("88:88", UbuntuMono_B[4], &tw, &th);
+	calc_text_size("88:88", &UbuntuMono_Bold44pt7b, &tw, &th);
 	_glyph_w = (uint16_t)tw;
 	_glyph_h = (uint16_t)th;
 
-	_w = (int16_t)((_glyph_w + 8) * _scale);
-	_h = (int16_t)((_glyph_h + 8) * _scale);
+	_w = (int16_t)(_glyph_w + 8);
+	_h = (int16_t)(_glyph_h + 8);
 	_x = center_x - _w / 2;
 	_y = y;
 
@@ -58,19 +59,17 @@ bool widgetClockLarge::redraw(uint8_t fade_amount, int8_t tab_group)
 		// within that fixed-size canvas each time, rather than always
 		// starting at the same left edge.
 		int actual_w, actual_h;
-		calc_text_size(_time_string.c_str(), UbuntuMono_B[4], &actual_w, &actual_h);
+		calc_text_size(_time_string.c_str(), &UbuntuMono_Bold44pt7b, &actual_w, &actual_h);
 		int16_t cursor_x = ((int16_t)(_glyph_w + 8) - (int16_t)actual_w) / 2;
 
-		umgfx::UM_GFX_Canvas glyph;
-		glyph.create(_glyph_w + 8, _glyph_h + 8, TFT_MAGENTA);
-		glyph.setFreeFont(UbuntuMono_B[4]);
-		glyph.setTextColor(dashboard_theme::text_primary, TFT_MAGENTA);
-		glyph.setCursor(cursor_x, _glyph_h + 2);
-		glyph.print(_time_string.c_str());
-
+		// Rendered natively at the size it's displayed - no intermediate
+		// small canvas + upscale step needed now that the font itself is
+		// already the target size.
 		_sprite_content.fillRect(0, 0, _w, _h, dashboard_theme::background);
-		_sprite_content.drawSprite(0, 0, &glyph, _scale, TFT_MAGENTA);
-		glyph.release();
+		_sprite_content.setFreeFont(&UbuntuMono_Bold44pt7b);
+		_sprite_content.setTextColor(dashboard_theme::text_primary, dashboard_theme::background);
+		_sprite_content.setCursor(cursor_x, _glyph_h + 2);
+		_sprite_content.print(_time_string.c_str());
 	}
 
 	// Blit unconditionally, even when the text itself hasn't changed. The

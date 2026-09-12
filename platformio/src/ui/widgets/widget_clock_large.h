@@ -2,10 +2,10 @@
 
 #include "ui/ui_element.h"
 
-// Plain HH:MM clock using the largest embedded font (22pt Bold) at a modest
-// 2x scale - large and legible without the blockiness a bigger scale factor
-// would introduce, and it reads as a real typeface rather than the
-// mechanical look of drawn segments.
+// Plain HH:MM clock, rendered natively at 44pt (fonts/ubuntu_mono_bold_44pt.h)
+// rather than upscaling the largest embedded size (22pt Bold) - upscaling a
+// bitmap font via drawSprite()'s scale factor is a naive pixel-doubling
+// blit, which is what made the previous version look blocky at this size.
 class widgetClockLarge : public ui_element
 {
 	public:
@@ -19,5 +19,4 @@ class widgetClockLarge : public ui_element
 
 		uint16_t _glyph_w = 0;
 		uint16_t _glyph_h = 0;
-		float _scale = 2.0f;
 };
