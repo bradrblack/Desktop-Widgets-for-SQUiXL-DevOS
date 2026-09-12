@@ -8,11 +8,7 @@ This is a fork of the Unexpected Maker SQUiXL project with three new full-screen
 * Calendar - Next six events in your Google Calendar
 * OTA progress bar - shows status during OTA firmware updates
 
-<img src="./clock.png" width="480"/>
-<img src="./markets.png" width="480"/>
-<img src="./weather.png" width="480"/>
-<img src="./close.png" width="480"/>
-<img src="./ota.jpg" width="480"/>
+<img src="./clock.png" width="240"/> <img src="./markets.png" width="240"/> <img src="./weather.png" width="240"/> <img src="./calendar.png" width="240"/> <img src="./ota.jpg" width="240"/>
 
 # SQUiXL Official Shipping Firmware V2
 
