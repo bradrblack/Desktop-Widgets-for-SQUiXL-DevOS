@@ -1,7 +1,7 @@
 
 # Desktop Gadgets for SQUiXL
 
-This is a fork of the Unexpected Maker SQUiXL project with three new full-screen widet panels:
+This is a fork of the Unexpected Maker SQUiXL project with four new full-screen widet panels:
 * Clock - with WiFi and Battery Status plus a play/pause control for auto-rotation of widgets
 * Markets - up to six stock/index/current symbols from Yahoo Finance
 * Weather - OpenWeather forecast
