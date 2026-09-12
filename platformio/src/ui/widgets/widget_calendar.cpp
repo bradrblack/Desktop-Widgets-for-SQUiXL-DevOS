@@ -97,6 +97,17 @@ namespace
 
 void widgetCalendar::maybe_fetch()
 {
+	// TEMPORARILY DISABLED: a calendar ICS fetch put the wifi_task into a
+	// blocking read long enough to trip the task watchdog and reboot the
+	// device - and since this runs automatically at boot once WiFi
+	// connects, every reboot repeated it, causing a boot loop. Re-enable
+	// once WifiController::http_request() has a real wall-clock deadline
+	// (http.setTimeout()/setHandshakeTimeout() don't bound a slow-trickling
+	// read - see squixl session notes) and/or a response size cap suited to
+	// a full calendar export being much larger than the weather/stock APIs
+	// this plumbing was tuned against.
+	return;
+
 	ics_url = settings.config.calendar.ics_url.c_str();
 
 	if (ics_url.empty())
