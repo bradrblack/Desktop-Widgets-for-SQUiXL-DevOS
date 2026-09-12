@@ -353,13 +353,14 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 				int16_t line2_y = line1_y + row_char_h + 8;
 
 				_sprite_back.setFreeFont(UbuntuMono_B[2]);
-				_sprite_back.setTextColor(dashboard_theme::accent_amber, -1);
 
+				_sprite_back.setTextColor(dashboard_theme::accent_amber, -1);
 				_sprite_back.setCursor(padding.left, line1_y);
 				_sprite_back.print(ev.date_label.c_str());
 
 				int time_w, time_h;
 				calc_text_size(ev.time_label.c_str(), UbuntuMono_B[2], &time_w, &time_h);
+				_sprite_back.setTextColor(dashboard_theme::accent_teal, -1);
 				_sprite_back.setCursor(_w - padding.right - time_w, line1_y);
 				_sprite_back.print(ev.time_label.c_str());
 
