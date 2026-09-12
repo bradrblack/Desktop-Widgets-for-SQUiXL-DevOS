@@ -8,6 +8,7 @@
 #include "ui/widgets/widget_clock_large.h"
 #include "ui/widgets/widget_status_pill.h"
 #include "ui/widgets/widget_play_pause.h"
+#include "ui/widgets/widget_calendar.h"
 #include "ui/theme_dashboard.h"
 // #include "ui/widgets/widget_fps.h"
 
@@ -43,6 +44,7 @@ widgetWeatherCard *widget_weather_card = nullptr;
 widgetClockLarge *widget_clock_large = nullptr;
 widgetStatusPill *widget_status_pill_clock = nullptr;
 widgetPlayPause *widget_play_pause = nullptr;
+widgetCalendar *widget_calendar = nullptr;
 
 // Carousel auto-advance - see widget_play_pause.h. Populated once the
 // carousel screens exist (end of setup_ui()) and driven from loop().
@@ -61,6 +63,7 @@ unsigned long CAROUSEL_FIRST_ADVANCE_MS = 2000;
 ui_screen *screen_clock = nullptr;
 ui_screen *screen_dashboard = nullptr;
 ui_screen *screen_weather = nullptr;
+ui_screen *screen_calendar = nullptr;
 ui_screen *screen_settings = nullptr;
 ui_screen *screen_wifimanager = nullptr;
 
@@ -679,18 +682,34 @@ Setup WiFi Manager Screen
 
 	screen_weather->set_refresh_interval(50);
 
+	/*
+	Setup Calendar Screen (swipe left again from Weather)
+	*/
+
+	screen_calendar = new ui_screen(); // Allocates into PSRAM
+	screen_calendar->setup(dashboard_theme::background, true);
+
+	widget_calendar = (widgetCalendar *)heap_caps_malloc(sizeof(widgetCalendar), MALLOC_CAP_SPIRAM);
+	widget_calendar = new widgetCalendar();
+	widget_calendar->create(20, 20, 440, 440, dashboard_theme::card, 32, 0, "AGENDA");
+	widget_calendar->set_refresh_interval(2000);
+	screen_calendar->add_child_ui(widget_calendar);
+
+	screen_calendar->set_refresh_interval(50);
+
 	screen_clock->set_navigation(Directions::RIGHT, screen_wifimanager, true);
 	screen_clock->set_navigation(Directions::DOWN, screen_settings, true);
 	screen_clock->set_navigation(Directions::LEFT, screen_dashboard, true);
 	screen_dashboard->set_navigation(Directions::LEFT, screen_weather, true);
+	screen_weather->set_navigation(Directions::LEFT, screen_calendar, true);
 
-	// Loop LEFT from weather back to clock, both for the auto-advancing
+	// Loop LEFT from calendar back to clock, both for the auto-advancing
 	// carousel (which just walks navigation[LEFT] each hop - see loop())
 	// and so a manual swipe-left loops the same way. Not reversed: that
 	// would overwrite screen_clock's existing RIGHT link to the wifi
-	// manager screen set above. Weather's RIGHT already correctly points
-	// back to dashboard, set as the reverse of the link above.
-	screen_weather->set_navigation(Directions::LEFT, screen_clock, false);
+	// manager screen set above. Calendar's RIGHT already correctly points
+	// back to weather, set as the reverse of the link above.
+	screen_calendar->set_navigation(Directions::LEFT, screen_clock, false);
 }
 
 bool wifi_requirements_checked = false;
@@ -919,6 +938,7 @@ void loop()
 		dashboard_prefetch_done = true;
 		widget_stock_list->prefetch();
 		widget_weather_card->prefetch();
+		widget_calendar->prefetch();
 	}
 
 	// If we have a current screen selected and it should be refreshed, refresh it!

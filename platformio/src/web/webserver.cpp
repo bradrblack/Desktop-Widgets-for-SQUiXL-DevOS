@@ -5,8 +5,10 @@
 #include "web/wifi_controller.h"
 #include "ui/ui_screen.h"
 #include "ui/widgets/widget_stock_list.h"
+#include "ui/widgets/widget_calendar.h"
 
 extern widgetStockList *widget_stock_list;
+extern widgetCalendar *widget_calendar;
 
 // HTML Templates
 #include "web/www/www_general.h"
@@ -664,6 +666,11 @@ bool WebServer::start()
 				// Otherwise the card keeps using whatever symbols it loaded
 				// at boot until the device is rebooted.
 				widget_stock_list->reload_symbols();
+			}
+
+			if (group.name == "Calendar Settings" && widget_calendar != nullptr)
+			{
+				widget_calendar->reload_events();
 			}
 
 			// const char *return_data = generate_settings_html(group_id).c_str();

@@ -197,6 +197,14 @@ struct Config_widget_stocks
 		String ticker6 = "^GSPC";
 };
 
+// A calendar's "secret address in iCal format" (Google Calendar: Settings >
+// Settings for my calendars > [calendar] > Integrate calendar) or any other
+// .ics URL. Blank means the Agenda card shows nothing.
+struct Config_widget_calendar
+{
+		String ics_url = "";
+};
+
 struct Config
 {
 		int ver = 1;
@@ -250,6 +258,7 @@ struct Config
 		Config_widget_open_weather open_weather;
 		Config_widget_rss_feed rss_feed;
 		Config_widget_stocks stocks;
+		Config_widget_calendar calendar;
 		Config_audio audio;
 		Config_mqtt mqtt;
 		Config_haptics haptics;
@@ -340,6 +349,8 @@ class Settings
 			settings_groups.push_back({"Expansion Settings", SettingType::WIDGET, "I2C Expansion Port Settings"});
 
 			settings_groups.push_back({"Markets Settings", SettingType::WIDGET, "Configure up to 6 symbols shown on the Markets card. Tickers must match Yahoo Finance's own symbol format (search finance.yahoo.com to confirm one before entering it here) - e.g. AAPL for Apple, BCE.TO for a Toronto Stock Exchange listing, ^GSPC for the S&P 500 index, or CADUSD=X for a currency pair. Leave a ticker blank to skip that row."});
+
+			settings_groups.push_back({"Calendar Settings", SettingType::WIDGET, "Paste a calendar's secret iCal address here to show its next few upcoming events on the Agenda card. In Google Calendar: Settings > Settings for my calendars > [your calendar] > Integrate calendar > Secret address in iCal format. Recurring events are shown only at their original time - recurrence isn't expanded."});
 		}
 
 		void init();
@@ -447,6 +458,9 @@ class Settings
 		SettingsOptionString stocks_ticker5{&config.stocks.ticker5, 10, "Symbol 5 Ticker", 0, -1, "", false};
 		SettingsOptionString stocks_label6{&config.stocks.label6, 10, "Symbol 6 Label"};
 		SettingsOptionString stocks_ticker6{&config.stocks.ticker6, 10, "Symbol 6 Ticker", 0, -1, "", false};
+
+		// Calendar - see Config_widget_calendar
+		SettingsOptionString calendar_ics_url{&config.calendar.ics_url, 11, "iCal URL", 0, -1, "https://calendar.google.com/calendar/ical/.../basic.ics", false};
 
 		// ==== ASYNC SUPPORT ====
 	public:
