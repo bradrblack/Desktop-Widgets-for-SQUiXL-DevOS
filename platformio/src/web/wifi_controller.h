@@ -34,11 +34,17 @@ class WifiController
 		bool is_connected();
 
 		// task queue related functions
-		void perform_wifi_request(std::string, _CALLBACK callback);
-		void add_to_queue(std::string, _CALLBACK callback);
+		// max_response_bytes: 0 = unlimited (existing behaviour). Nonzero
+		// stops reading the response body once that many bytes have been
+		// read, for a caller (e.g. a calendar .ics fetch) whose source can't
+		// be asked to limit itself server-side. http_request() also always
+		// enforces a hard wall-clock deadline on the read regardless of this
+		// cap - see its definition for why that's needed independently.
+		void perform_wifi_request(std::string, _CALLBACK callback, size_t max_response_bytes = 0);
+		void add_to_queue(std::string, _CALLBACK callback, size_t max_response_bytes = 0);
 		void loop();
 
-		String http_request(std::string url);
+		String http_request(std::string url, size_t max_response_bytes = 0);
 
 		void start_async_scan();
 		bool is_scan_in_progress() const { return scan_in_progress; }
@@ -69,6 +75,7 @@ class WifiController
 		{
 				std::string url;
 				_CALLBACK callback;
+				size_t max_response_bytes = 0;
 		};
 
 		// Structure for callback items

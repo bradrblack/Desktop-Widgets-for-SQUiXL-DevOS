@@ -250,7 +250,7 @@ void WifiController::loop()
 }
 
 // Make an HTTP request and return the result as a String
-String WifiController::http_request(std::string url)
+String WifiController::http_request(std::string url, size_t max_response_bytes)
 {
 	String payload = "ERROR";
 	int http_code = -1;
@@ -339,9 +339,63 @@ String WifiController::http_request(std::string url)
 		Serial.printf("** Response Code: %s\n", http.errorToString(http_code).c_str());
 		http.end();
 	}
-	else
+	else if (max_response_bytes == 0)
 	{
 		payload = http.getString();
+		http.end();
+	}
+	else
+	{
+		// A capped read, for a source (e.g. a calendar .ics export) that
+		// can't be asked to limit itself server-side. http.getString() was
+		// observed hanging well past its own setTimeout(), deep inside a
+		// blocking socket read (NetworkClientSecure::read -> mbedtls_ssl_read),
+		// long enough to trip the task watchdog and reboot the device. Only
+		// ever reading up to what Stream::available() already reports as
+		// buffered - never asking for more than that - can't land in that
+		// same blocking call; the wall-clock deadline below bounds the
+		// overall read independently either way.
+		NetworkClient *stream = http.getStreamPtr();
+		int content_length = http.getSize(); // -1 if unknown (e.g. chunked)
+
+		constexpr unsigned long READ_DEADLINE_MS = 10000;
+		unsigned long read_start = millis();
+
+		std::string buf;
+		buf.reserve(max_response_bytes < 16384 ? max_response_bytes : 16384);
+
+		uint8_t chunk[512];
+		while (http.connected() && buf.size() < max_response_bytes)
+		{
+			if (millis() - read_start > READ_DEADLINE_MS)
+			{
+				Serial.println("http_request: capped read deadline exceeded, using partial response");
+				break;
+			}
+
+			size_t avail = stream->available();
+			if (avail == 0)
+			{
+				if (content_length >= 0 && (int)buf.size() >= content_length)
+					break;
+				delay(1);
+				continue;
+			}
+
+			size_t want = sizeof(chunk);
+			if (max_response_bytes - buf.size() < want)
+				want = max_response_bytes - buf.size();
+			size_t to_read = (avail < want) ? avail : want;
+
+			int got = stream->read(chunk, to_read);
+			if (got <= 0)
+				break;
+			buf.append((const char *)chunk, got);
+		}
+
+		Serial.printf("http_request: capped read got %u bytes (cap %u)\n", (unsigned)buf.size(), (unsigned)max_response_bytes);
+
+		payload = String(buf.c_str());
 		http.end();
 	}
 
@@ -430,7 +484,7 @@ std::string WifiController::extract_domain(const std::string &url)
 }
 
 // Function to call out to the HTTP Request and then add the result to the outgoing queue
-void WifiController::perform_wifi_request(std::string url, _CALLBACK callback)
+void WifiController::perform_wifi_request(std::string url, _CALLBACK callback, size_t max_response_bytes)
 {
 	bool success = true;
 	String response = "OK";
@@ -438,7 +492,7 @@ void WifiController::perform_wifi_request(std::string url, _CALLBACK callback)
 	// Only process if there is an actual URL, otherwise do the callback
 	if (!url.empty())
 	{
-		response = http_request(url);
+		response = http_request(url, max_response_bytes);
 		success = (response != "ERROR"); // or false, based on the HTTP request result
 	}
 
@@ -468,7 +522,7 @@ void WifiController::wifi_task(void *pvParameters)
 			{
 				controller->wifi_busy = true;
 				// Perform the request
-				controller->perform_wifi_request(item->url, item->callback);
+				controller->perform_wifi_request(item->url, item->callback, item->max_response_bytes);
 
 				// Wait until callback queue is empty before processing the next task
 				while (uxQueueMessagesWaiting(controller->wifi_callback_queue) > 0)
@@ -491,7 +545,7 @@ void WifiController::wifi_task(void *pvParameters)
 }
 
 // Function to add items to the queue
-void WifiController::add_to_queue(std::string url, _CALLBACK callback)
+void WifiController::add_to_queue(std::string url, _CALLBACK callback, size_t max_response_bytes)
 {
 	if (debug_disable_queue)
 	{
@@ -503,6 +557,7 @@ void WifiController::add_to_queue(std::string url, _CALLBACK callback)
 
 	item->url = url;
 	item->callback = callback;
+	item->max_response_bytes = max_response_bytes;
 
 	xQueueSend(wifi_task_queue, &item, portMAX_DELAY);
 }

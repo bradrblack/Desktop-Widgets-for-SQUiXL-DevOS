@@ -97,17 +97,6 @@ namespace
 
 void widgetCalendar::maybe_fetch()
 {
-	// TEMPORARILY DISABLED: a calendar ICS fetch put the wifi_task into a
-	// blocking read long enough to trip the task watchdog and reboot the
-	// device - and since this runs automatically at boot once WiFi
-	// connects, every reboot repeated it, causing a boot loop. Re-enable
-	// once WifiController::http_request() has a real wall-clock deadline
-	// (http.setTimeout()/setHandshakeTimeout() don't bound a slow-trickling
-	// read - see squixl session notes) and/or a response size cap suited to
-	// a full calendar export being much larger than the weather/stock APIs
-	// this plumbing was tuned against.
-	return;
-
 	ics_url = settings.config.calendar.ics_url.c_str();
 
 	if (ics_url.empty())
@@ -129,7 +118,16 @@ void widgetCalendar::maybe_fetch()
 		{
 			is_fetching = true;
 			fetch_started_at = millis();
-			wifi_controller.add_to_queue((std::string)ics_url, [this](bool success, const String &response) { this->process_ics_data(success, response); });
+			// A full calendar export can be far larger than the weather/stock
+			// APIs this fetch pipeline was originally tuned against, and the
+			// plain "secret address" .ics URL can't be asked to limit itself
+			// server-side - cap the read so a big or slow-trickling response
+			// can't hang the wifi_task (see WifiController::http_request()).
+			// A calendar's VCALENDAR/VTIMEZONE header (which comes before any
+			// VEVENT blocks) can itself run a few KB, so this leaves enough
+			// room past that for the first several events too.
+			constexpr size_t ICS_MAX_BYTES = 49152; // 48KB
+			wifi_controller.add_to_queue((std::string)ics_url, [this](bool success, const String &response) { this->process_ics_data(success, response); }, ICS_MAX_BYTES);
 		}
 		next_update = millis();
 	}
