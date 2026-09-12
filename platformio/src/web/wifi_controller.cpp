@@ -298,6 +298,10 @@ String WifiController::http_request(std::string url, size_t max_response_bytes)
 	// --- HTTP request ---
 	HTTPClient http;
 	http.setTimeout(5000);
+	// Defaults to disabled - needed for sources like a Google Apps Script
+	// Web App, which serves its actual response via a 302 redirect to a
+	// script.googleusercontent.com URL rather than responding directly.
+	http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
 
 	WiFiClientSecure secure_client;
 
