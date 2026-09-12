@@ -146,6 +146,14 @@ class SQUiXL : public SQUiXL_LITE
 
 		bool process_touch_full();
 
+		// Exposed so callers can detect a fresh touch-down edge themselves
+		// (process_touch_full()'s return value is true on almost every
+		// non-throttled call while a touch is in any phase - down, held,
+		// or during the ~80ms deferred single-tap window after release -
+		// not just on a new discrete touch, so it can't be used for that).
+		bool is_touch_down() { return isTouched; }
+		ui_element *get_currently_selected() { return currently_selected; }
+
 		// RTC
 		uint8_t wake_reason = 0;
 

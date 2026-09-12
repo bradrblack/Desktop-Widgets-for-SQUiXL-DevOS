@@ -7,6 +7,7 @@
 #include "ui/widgets/widget_weather_card.h"
 #include "ui/widgets/widget_clock_large.h"
 #include "ui/widgets/widget_status_pill.h"
+#include "ui/widgets/widget_play_pause.h"
 #include "ui/theme_dashboard.h"
 // #include "ui/widgets/widget_fps.h"
 
@@ -41,6 +42,20 @@ widgetStockList *widget_stock_list = nullptr;
 widgetWeatherCard *widget_weather_card = nullptr;
 widgetClockLarge *widget_clock_large = nullptr;
 widgetStatusPill *widget_status_pill_clock = nullptr;
+widgetPlayPause *widget_play_pause = nullptr;
+
+// Carousel auto-advance - see widget_play_pause.h. Populated once the
+// carousel screens exist (end of setup_ui()) and driven from loop().
+bool carousel_playing = false;
+bool carousel_was_touch_down = false;
+unsigned long carousel_touch_debounce_until = 0;
+unsigned long carousel_last_advance = 0;
+unsigned long CAROUSEL_INTERVAL_MS = 60000;
+// The very first advance after pressing play fires quickly so it's obvious
+// the carousel is actually running, instead of leaving the user wondering
+// for a full CAROUSEL_INTERVAL_MS whether anything happened; every advance
+// after that uses the normal interval.
+unsigned long CAROUSEL_FIRST_ADVANCE_MS = 2000;
 
 // ui_screen screen_wifi_setup;
 ui_screen *screen_clock = nullptr;
@@ -623,6 +638,15 @@ Setup WiFi Manager Screen
 	widget_status_pill_clock->set_refresh_interval(15000);
 	screen_clock->add_child_ui(widget_status_pill_clock);
 
+	widget_play_pause = (widgetPlayPause *)heap_caps_malloc(sizeof(widgetPlayPause), MALLOC_CAP_SPIRAM);
+	widget_play_pause = new widgetPlayPause();
+	// Horizontally centered, vertically centered in the gap between the
+	// clock digits and the bottom of the screen (clock bottom ~= 200 + 22pt
+	// glyph height * 2x scale ~= 302; screen bottom is 480) - clear of the
+	// swipe-navigation-heavy area right around the clock text.
+	widget_play_pause->create(240 - 22, 369 - 22);
+	screen_clock->add_child_ui(widget_play_pause);
+
 	screen_clock->set_refresh_interval(50);
 
 	/*
@@ -659,6 +683,14 @@ Setup WiFi Manager Screen
 	screen_clock->set_navigation(Directions::DOWN, screen_settings, true);
 	screen_clock->set_navigation(Directions::LEFT, screen_dashboard, true);
 	screen_dashboard->set_navigation(Directions::LEFT, screen_weather, true);
+
+	// Loop LEFT from weather back to clock, both for the auto-advancing
+	// carousel (which just walks navigation[LEFT] each hop - see loop())
+	// and so a manual swipe-left loops the same way. Not reversed: that
+	// would overwrite screen_clock's existing RIGHT link to the wifi
+	// manager screen set above. Weather's RIGHT already correctly points
+	// back to dashboard, set as the reverse of the link above.
+	screen_weather->set_navigation(Directions::LEFT, screen_clock, false);
 }
 
 bool wifi_requirements_checked = false;
@@ -902,12 +934,71 @@ void loop()
 
 	// Touch rate is done with process_touch_full()
 	// If a touch was processed, it returns true, otherwise it returns false
-	if (squixl.process_touch_full())
+	bool touch_processed = squixl.process_touch_full();
+
+	// process_touch_full()'s return value can't be used to detect "the user
+	// just touched something new" - it's true on nearly every non-throttled
+	// call for as long as a touch is in any phase (down, held, or the
+	// ~80ms deferred single-tap window after release), not just on a fresh
+	// touch. So watch squixl.is_touch_down() ourselves for the down-edge,
+	// and pause immediately unless this touch is the play/pause button's
+	// own (its process_touch() below owns toggling carousel_playing).
+	bool touch_down_now = squixl.is_touch_down();
+	if (touch_down_now && !carousel_was_touch_down && millis() > carousel_touch_debounce_until)
+	{
+		// Debounce - a single physical tap can otherwise produce more than
+		// one down-edge (touch-IC contact bounce), which could register as
+		// a second "touch elsewhere" a few ms after the button's own tap.
+		carousel_touch_debounce_until = millis() + 250;
+
+		bool is_button = (squixl.get_currently_selected() == (ui_element *)widget_play_pause);
+		Serial.printf("Carousel: touch-down @ %lu, selected=%p button=%p is_button=%d playing_before=%d\n",
+					  millis(), (void *)squixl.get_currently_selected(), (void *)widget_play_pause, is_button, carousel_playing);
+
+		if (!is_button && carousel_playing)
+		{
+			Serial.println("Carousel: pausing (touch elsewhere)");
+			carousel_playing = false;
+		}
+	}
+	carousel_was_touch_down = touch_down_now;
+
+	if (touch_processed)
 	{
 		// If 5V power had been detected, play a sound.
 		if (squixl.vbus_changed())
 		{
 			audio.play_dock();
+		}
+	}
+
+	// Auto-advance the carousel while playing - walks navigation[LEFT] on a
+	// timer, same as swiping left would (clock -> dashboard -> weather ->
+	// clock -> ..., since weather's LEFT loops back to clock - see
+	// setup_ui()), but using the real slide-transition animation via
+	// animate_transition() instead of a hard screen-swap.
+	if (carousel_playing)
+	{
+		unsigned long elapsed = millis() - carousel_last_advance;
+
+		static unsigned long last_status_log = 0;
+		if (millis() - last_status_log > 500)
+		{
+			last_status_log = millis();
+			Serial.printf("Carousel: playing, elapsed=%lu/%lu, current_screen=%p\n",
+						  elapsed, CAROUSEL_INTERVAL_MS, (void *)squixl.current_screen());
+		}
+
+		if (elapsed > CAROUSEL_INTERVAL_MS)
+		{
+			ui_screen *current = squixl.current_screen();
+			if (current != nullptr && current->get_navigation(Directions::LEFT) != nullptr)
+			{
+				Serial.printf("Carousel: ADVANCING (animated) from %p\n", (void *)current);
+				current->animate_transition(Directions::LEFT);
+			}
+
+			carousel_last_advance = millis();
 		}
 	}
 

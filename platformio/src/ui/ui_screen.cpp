@@ -776,6 +776,45 @@ void ui_screen::cancel_drag()
 	clean_neighbour_sprites();
 }
 
+void ui_screen::animate_transition(Directions direction)
+{
+	ui_screen *target = navigation[(int)direction];
+	if (target == nullptr)
+		return;
+
+	// Mirrors the setup a real touch-driven swipe does at drag-start (see
+	// the SCREEN_DRAG_H/V handling in process_touch()), just without an
+	// actual finger movement to drive it - finish_drag() below then plays
+	// the same animation and handles the screen switch, buffer cleanup,
+	// and squixl.switching_screens bookkeeping exactly as a manual swipe does.
+	drag_axis = (direction == Directions::LEFT || direction == Directions::RIGHT) ? DRAGGABLE::DRAG_HORIZONTAL : DRAGGABLE::DRAG_VERTICAL;
+
+	if (drag_axis == DRAGGABLE::DRAG_HORIZONTAL)
+	{
+		drag_neighbours[0] = get_navigation(Directions::LEFT);
+		drag_neighbours[1] = get_navigation(Directions::RIGHT);
+	}
+	else
+	{
+		drag_neighbours[0] = get_navigation(Directions::UP);
+		drag_neighbours[1] = get_navigation(Directions::DOWN);
+	}
+
+	target->setup_draggable_neighbour(true);
+
+	if (!_sprite_drag.getBuffer())
+		_sprite_drag.create(480, 480);
+
+	drag_x = 0;
+	drag_y = 0;
+	cached_drag_x = 0;
+	cached_drag_y = 0;
+	is_dragging = true;
+	is_drag_blended = false;
+
+	finish_drag(direction, 0, 0);
+}
+
 void ui_screen::finish_drag(Directions direction, int16_t dx, int16_t dy)
 {
 	// float from_x = (float)dx;

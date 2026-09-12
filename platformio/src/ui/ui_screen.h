@@ -64,6 +64,12 @@ class ui_screen : public ui_element
 		void finish_drag(Directions direction, int16_t dx, int16_t dy);
 		void cancel_drag();
 
+		// Plays the same slide-transition animation a manual swipe uses,
+		// programmatically, to whatever screen is linked via navigation[direction] -
+		// for callers (like an auto-advancing carousel) that want the normal
+		// swipe feel without an actual touch drag driving it.
+		void animate_transition(Directions direction);
+
 		int8_t get_tab_group_index();
 		bool position_children(bool force_children = false);
 
