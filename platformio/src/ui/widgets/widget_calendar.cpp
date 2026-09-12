@@ -12,7 +12,7 @@ namespace
 	constexpr unsigned long REFRESH_INTERVAL_MS = 900000; // 15 min
 	// Until the first fetch ever succeeds, retry much sooner.
 	constexpr unsigned long RETRY_INTERVAL_MS = 15000; // 15 sec
-	constexpr size_t MAX_EVENTS = 4;
+	constexpr size_t MAX_EVENTS = 6;
 
 	std::string unescape_ics_text(const std::string &in)
 	{
@@ -254,7 +254,10 @@ void widgetCalendar::parse_ics(const String &body)
 
 	events = std::move(upcoming);
 
-	squixl.get_cached_char_sizes(FONT_SPEC::FONT_WEIGHT_B, 3, &row_char_w, &row_char_h);
+	// Matches the smaller font used for the weather card's day rows (index
+	// 2), rather than the larger index-3 font the header uses, so 6 events
+	// fit comfortably in the card.
+	squixl.get_cached_char_sizes(FONT_SPEC::FONT_WEIGHT_B, 2, &row_char_w, &row_char_h);
 }
 
 void widgetCalendar::process_ics_data(bool success, const String &response)
@@ -315,10 +318,10 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 
 		int hdr_w, hdr_h;
 		_sprite_back.setFreeFont(UbuntuMono_B[3]);
-		calc_text_size("Agenda", UbuntuMono_B[3], &hdr_w, &hdr_h);
+		calc_text_size("Calendar", UbuntuMono_B[3], &hdr_w, &hdr_h);
 		_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 		_sprite_back.setCursor((_w - hdr_w) / 2, HEADER_H / 2 + hdr_h / 2);
-		_sprite_back.print("Agenda");
+		_sprite_back.print("Calendar");
 
 		int16_t row_y0 = HEADER_H + 10;
 
@@ -349,7 +352,7 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 				int16_t line1_y = row_y0 + (int16_t)i * row_h + row_char_h;
 				int16_t line2_y = line1_y + row_char_h + 8;
 
-				_sprite_back.setFreeFont(UbuntuMono_B[3]);
+				_sprite_back.setFreeFont(UbuntuMono_B[2]);
 				_sprite_back.setTextColor(dashboard_theme::accent_amber, -1);
 				_sprite_back.setCursor(padding.left, line1_y);
 				_sprite_back.printf("%s - %s", ev.date_label.c_str(), ev.time_label.c_str());
@@ -358,12 +361,12 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 				// the card, rather than letting it overflow the edge.
 				std::string summary = ev.summary;
 				int text_w, text_h;
-				calc_text_size(summary.c_str(), UbuntuMono_B[3], &text_w, &text_h);
+				calc_text_size(summary.c_str(), UbuntuMono_B[2], &text_w, &text_h);
 				int16_t max_w = _w - padding.left - padding.right;
 				while (text_w > max_w && summary.length() > 1)
 				{
 					summary.pop_back();
-					calc_text_size((summary + "...").c_str(), UbuntuMono_B[3], &text_w, &text_h);
+					calc_text_size((summary + "...").c_str(), UbuntuMono_B[2], &text_w, &text_h);
 				}
 				if (summary.length() < ev.summary.length())
 					summary += "...";

@@ -691,7 +691,7 @@ Setup WiFi Manager Screen
 
 	widget_calendar = (widgetCalendar *)heap_caps_malloc(sizeof(widgetCalendar), MALLOC_CAP_SPIRAM);
 	widget_calendar = new widgetCalendar();
-	widget_calendar->create(20, 20, 440, 440, dashboard_theme::card, 32, 0, "AGENDA");
+	widget_calendar->create(20, 20, 440, 440, dashboard_theme::card, 32, 0, "CALENDAR");
 	widget_calendar->set_refresh_interval(2000);
 	screen_calendar->add_child_ui(widget_calendar);
 
