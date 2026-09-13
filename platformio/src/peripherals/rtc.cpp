@@ -240,9 +240,12 @@ String RTC::get_secs_string(bool padded)
 String RTC::get_time_string(bool padded, bool is24hour)
 {
 	int hour = rtc.getCurrentDateTimeComponent(DATETIME_HOUR);
-	if (!is24hour && hour > 12)
+	if (!is24hour)
 	{
-		hour -= 12;
+		if (hour > 12)
+			hour -= 12;
+		else if (hour == 0)
+			hour = 12;
 	}
 	int minute = rtc.getCurrentDateTimeComponent(DATETIME_MINUTE);
 	char buf[6]; // Format "hh:mm" (or "h:mm") plus null terminator
@@ -281,9 +284,12 @@ String RTC::get_time_string_seconds(bool padded, bool is24hour)
 	// if (year < 23)
 	// 	return "--:--:--";
 
-	if (!is24hour && hours > 12)
+	if (!is24hour)
 	{
-		hours -= 12;
+		if (hours > 12)
+			hours -= 12;
+		else if (hours == 0)
+			hours = 12;
 	}
 	char buf[9]; // Format "hh:mm:ss" (or "h:mm:ss") plus null terminator
 	if (padded)
