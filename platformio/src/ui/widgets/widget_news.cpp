@@ -14,6 +14,11 @@ namespace
 	// Until the first fetch ever succeeds, retry much sooner.
 	constexpr unsigned long RETRY_INTERVAL_MS = 15000; // 15 sec
 
+	// While parked on this screen (redraw() only ever runs for the current
+	// screen's children), rotate to another random headline on this cadence
+	// independent of the global carousel's own auto-advance timer/state.
+	constexpr unsigned long ROTATE_INTERVAL_MS = 60000; // 60 sec
+
 	// A "1000+ line" NYT home-section response is mostly per-story
 	// `multimedia` arrays (many image-format variants per story) that this
 	// widget never reads - real-world size is roughly 150-400KB, well under
@@ -209,6 +214,14 @@ void widgetNews::pick_random_headline()
 	}
 
 	should_redraw = true;
+	last_pick_at = millis();
+}
+
+void widgetNews::on_screen_shown()
+{
+	if (millis() - last_pick_at < 3000)
+		return;
+	pick_random_headline();
 }
 
 void widgetNews::process_news_data(bool success, const String &response)
@@ -268,6 +281,9 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 		return false;
 
 	maybe_fetch();
+
+	if (has_data && millis() - last_pick_at > ROTATE_INTERVAL_MS)
+		pick_random_headline();
 
 	bool was_dirty = false;
 

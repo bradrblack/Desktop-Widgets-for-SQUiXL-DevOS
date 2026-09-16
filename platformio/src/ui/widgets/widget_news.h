@@ -28,9 +28,22 @@ class widgetNews : public ui_window
 		void reload_news();
 
 		// Picks a new random headline from the cached collection, different
-		// from the one currently shown when more than one is available.
-		// Called on screen-entry (main.cpp) and on tap (process_touch()).
+		// from the one currently shown when more than one is available, and
+		// stamps last_pick_at. Called directly by a data refresh
+		// (process_news_data()), a deliberate tap (process_touch()), and the
+		// 60s idle auto-rotate in redraw(). For the screen-entry trigger, use
+		// on_screen_shown() instead (see below).
 		void pick_random_headline();
+
+		// Screen-entry version of the above - main.cpp calls this (not
+		// pick_random_headline() directly) whenever this becomes the current
+		// screen. Debounced against last_pick_at: entering the screen can
+		// coincide with a just-finished data refresh (e.g. saving a
+		// freshly-entered API key re-fetches immediately, then the user
+		// swipes over to check it), which already picked a headline of its
+		// own moments earlier - without this, that shows as one headline
+		// being visibly swapped for another right after landing on the card.
+		void on_screen_shown();
 
 	private:
 		std::vector<std::string> headlines;
@@ -39,6 +52,11 @@ class widgetNews : public ui_window
 		unsigned long next_update = 0;
 		unsigned long fetch_started_at = 0;
 		unsigned long last_shuffle_at = 0;
+		// Shared by every pick_random_headline() caller - both the 3s
+		// screen-entry debounce and the 60s idle auto-rotate below key off
+		// this same timestamp so they can't fight each other into a rapid
+		// double-change.
+		unsigned long last_pick_at = 0;
 		bool is_fetching = false;
 		bool should_redraw = false;
 		bool has_data = false;
