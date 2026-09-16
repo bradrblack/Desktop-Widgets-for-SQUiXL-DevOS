@@ -6,9 +6,11 @@
 #include "ui/ui_screen.h"
 #include "ui/widgets/widget_stock_list.h"
 #include "ui/widgets/widget_calendar.h"
+#include "ui/widgets/widget_news.h"
 
 extern widgetStockList *widget_stock_list;
 extern widgetCalendar *widget_calendar;
+extern widgetNews *widget_news;
 
 // HTML Templates
 #include "web/www/www_general.h"
@@ -671,6 +673,11 @@ bool WebServer::start()
 			if (group.name == "Calendar Settings" && widget_calendar != nullptr)
 			{
 				widget_calendar->reload_events();
+			}
+
+			if (group.name == "News Settings" && widget_news != nullptr)
+			{
+				widget_news->reload_news();
 			}
 
 			// const char *return_data = generate_settings_html(group_id).c_str();

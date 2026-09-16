@@ -9,6 +9,7 @@
 #include "ui/widgets/widget_status_pill.h"
 #include "ui/widgets/widget_play_pause.h"
 #include "ui/widgets/widget_calendar.h"
+#include "ui/widgets/widget_news.h"
 #include "ui/theme_dashboard.h"
 // #include "ui/widgets/widget_fps.h"
 
@@ -45,6 +46,7 @@ widgetClockLarge *widget_clock_large = nullptr;
 widgetStatusPill *widget_status_pill_clock = nullptr;
 widgetPlayPause *widget_play_pause = nullptr;
 widgetCalendar *widget_calendar = nullptr;
+widgetNews *widget_news = nullptr;
 
 // Carousel auto-advance - see widget_play_pause.h. Populated once the
 // carousel screens exist (end of setup_ui()) and driven from loop().
@@ -64,6 +66,7 @@ ui_screen *screen_clock = nullptr;
 ui_screen *screen_dashboard = nullptr;
 ui_screen *screen_weather = nullptr;
 ui_screen *screen_calendar = nullptr;
+ui_screen *screen_news = nullptr;
 ui_screen *screen_settings = nullptr;
 ui_screen *screen_wifimanager = nullptr;
 
@@ -697,19 +700,35 @@ Setup WiFi Manager Screen
 
 	screen_calendar->set_refresh_interval(50);
 
+	/*
+	Setup News Screen (swipe left again from Calendar)
+	*/
+
+	screen_news = new ui_screen(); // Allocates into PSRAM
+	screen_news->setup(dashboard_theme::background, true);
+
+	widget_news = (widgetNews *)heap_caps_malloc(sizeof(widgetNews), MALLOC_CAP_SPIRAM);
+	widget_news = new widgetNews();
+	widget_news->create(20, 20, 440, 440, dashboard_theme::card, 32, 0, "News");
+	widget_news->set_refresh_interval(2000);
+	screen_news->add_child_ui(widget_news);
+
+	screen_news->set_refresh_interval(50);
+
 	screen_clock->set_navigation(Directions::RIGHT, screen_wifimanager, true);
 	screen_clock->set_navigation(Directions::DOWN, screen_settings, true);
 	screen_clock->set_navigation(Directions::LEFT, screen_dashboard, true);
 	screen_dashboard->set_navigation(Directions::LEFT, screen_weather, true);
 	screen_weather->set_navigation(Directions::LEFT, screen_calendar, true);
+	screen_calendar->set_navigation(Directions::LEFT, screen_news, true);
 
-	// Loop LEFT from calendar back to clock, both for the auto-advancing
+	// Loop LEFT from news back to clock, both for the auto-advancing
 	// carousel (which just walks navigation[LEFT] each hop - see loop())
 	// and so a manual swipe-left loops the same way. Not reversed: that
 	// would overwrite screen_clock's existing RIGHT link to the wifi
-	// manager screen set above. Calendar's RIGHT already correctly points
-	// back to weather, set as the reverse of the link above.
-	screen_calendar->set_navigation(Directions::LEFT, screen_clock, false);
+	// manager screen set above. News's RIGHT already correctly points back
+	// to calendar, set as the reverse of the link above.
+	screen_news->set_navigation(Directions::LEFT, screen_clock, false);
 }
 
 bool wifi_requirements_checked = false;
@@ -939,6 +958,7 @@ void loop()
 		widget_stock_list->prefetch();
 		widget_weather_card->prefetch();
 		widget_calendar->prefetch();
+		widget_news->prefetch();
 	}
 
 	// If we have a current screen selected and it should be refreshed, refresh it!
@@ -1006,6 +1026,13 @@ void loop()
 	if (now_current_screen != last_current_screen && now_current_screen == screen_clock)
 	{
 		widget_play_pause->force_redraw();
+	}
+
+	// Pick a fresh random headline every time this screen becomes current,
+	// same screen-transition event used above for the play/pause icon.
+	if (now_current_screen != last_current_screen && now_current_screen == screen_news)
+	{
+		widget_news->pick_random_headline();
 	}
 	last_current_screen = now_current_screen;
 

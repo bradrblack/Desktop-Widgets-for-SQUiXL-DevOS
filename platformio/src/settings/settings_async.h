@@ -205,6 +205,20 @@ struct Config_widget_calendar
 		String ics_url = "";
 };
 
+// NYT Top Stories API (home section) - see developer.nytimes.com. Only an
+// API key is needed; the endpoint has no story-count or field-filter query
+// param, so the News card fetches the full section response and keeps only
+// the headline text it needs - see widget_news.cpp's SAX parser.
+struct Config_widget_news
+{
+		String api_key = "";
+
+		bool has_key()
+		{
+			return (api_key.length() > 1);
+		}
+};
+
 struct Config
 {
 		int ver = 1;
@@ -259,6 +273,7 @@ struct Config
 		Config_widget_rss_feed rss_feed;
 		Config_widget_stocks stocks;
 		Config_widget_calendar calendar;
+		Config_widget_news news;
 		Config_audio audio;
 		Config_mqtt mqtt;
 		Config_haptics haptics;
@@ -351,6 +366,8 @@ class Settings
 			settings_groups.push_back({"Markets Settings", SettingType::WIDGET, "Configure up to 6 symbols shown on the Markets card. Tickers must match Yahoo Finance's own symbol format (search finance.yahoo.com to confirm one before entering it here) - e.g. AAPL for Apple, BCE.TO for a Toronto Stock Exchange listing, ^GSPC for the S&P 500 index, or CADUSD=X for a currency pair. Leave a ticker blank to skip that row."});
 
 			settings_groups.push_back({"Calendar Settings", SettingType::WIDGET, "Paste a calendar's secret iCal address here to show its next few upcoming events on the Agenda card. In Google Calendar: Settings > Settings for my calendars > [your calendar] > Integrate calendar > Secret address in iCal format. Recurring events are shown only at their original time - recurrence isn't expanded."});
+
+			settings_groups.push_back({"News Settings", SettingType::WIDGET, "Add your New York Times Top Stories API key here (developer.nytimes.com) to show a random headline on the News card. The story collection refreshes every 30 minutes; tap the card to show another random headline immediately."});
 		}
 
 		void init();
@@ -461,6 +478,9 @@ class Settings
 
 		// Calendar - see Config_widget_calendar
 		SettingsOptionString calendar_ics_url{&config.calendar.ics_url, 11, "iCal URL", 0, -1, "https://calendar.google.com/calendar/ical/.../basic.ics", false};
+
+		// News (NYT Top Stories) - see Config_widget_news
+		SettingsOptionString widget_news_apikey{&config.news.api_key, 12, "API KEY", 0, -1, "", false};
 
 		// ==== ASYNC SUPPORT ====
 	public:
