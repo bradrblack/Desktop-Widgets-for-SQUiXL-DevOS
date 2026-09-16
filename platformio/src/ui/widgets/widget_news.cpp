@@ -31,6 +31,80 @@ namespace
 	// response is never truncated; it only exists to bound the worst case.
 	constexpr size_t NEWS_MAX_RESPONSE_BYTES = 750000; // 750KB
 
+	// NYT headlines are UTF-8 and lean heavily on "smart" typographic
+	// punctuation (curly quotes, em/en dashes, ellipsis) - this device's
+	// bitmap fonts only cover a single-byte range with no UTF-8 awareness,
+	// so each byte of a multi-byte sequence gets drawn as its own separate
+	// glyph. In particular a UTF-8 apostrophe (U+2019, bytes E2 80 99) drew
+	// its middle byte (0x80) as this device's font's Euro sign glyph, since
+	// 0x80 is also where the Euro sign sits in the single-byte Windows-1252
+	// codepage many such fonts otherwise follow. Map the common cases to a
+	// plain ASCII equivalent, and drop any other multi-byte UTF-8 sequence
+	// entirely (accented letters, symbols, emoji, ...) rather than let its
+	// raw bytes render as further mojibake.
+	std::string sanitize_headline_text(const std::string &in)
+	{
+		std::string out;
+		out.reserve(in.size());
+
+		for (size_t i = 0; i < in.size();)
+		{
+			unsigned char c = (unsigned char)in[i];
+
+			if (c < 0x80)
+			{
+				out += (char)c;
+				i++;
+				continue;
+			}
+
+			if (c == 0xE2 && i + 2 < in.size())
+			{
+				unsigned char b1 = (unsigned char)in[i + 1];
+				unsigned char b2 = (unsigned char)in[i + 2];
+				if (b1 == 0x80)
+				{
+					if (b2 == 0x98 || b2 == 0x99) // ‘ ’
+					{
+						out += '\'';
+						i += 3;
+						continue;
+					}
+					if (b2 == 0x9C || b2 == 0x9D) // “ ”
+					{
+						out += '"';
+						i += 3;
+						continue;
+					}
+					if (b2 == 0x93 || b2 == 0x94) // – —
+					{
+						out += '-';
+						i += 3;
+						continue;
+					}
+					if (b2 == 0xA6) // …
+					{
+						out += "...";
+						i += 3;
+						continue;
+					}
+				}
+			}
+
+			size_t seq_len = 1;
+			if ((c & 0xE0) == 0xC0)
+				seq_len = 2;
+			else if ((c & 0xF0) == 0xE0)
+				seq_len = 3;
+			else if ((c & 0xF8) == 0xF0)
+				seq_len = 4;
+
+			i += seq_len;
+		}
+
+		return out;
+	}
+
 	// Streaming (SAX) parser that keeps only each story's "title" string,
 	// ignoring everything else (byline, abstract, url, multimedia image
 	// variants, facets, ...) - see widget_news.h for why that matters here.
@@ -51,7 +125,7 @@ namespace
 			bool string(json::string_t &val) override
 			{
 				if (in_story && story_depth == 0 && pending_key == "title")
-					titles.push_back(val);
+					titles.push_back(sanitize_headline_text(val));
 				return true;
 			}
 
@@ -282,7 +356,18 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 
 	maybe_fetch();
 
-	if (has_data && millis() - last_pick_at > ROTATE_INTERVAL_MS)
+	// is_dirty_hard is true both at boot and right after
+	// ui_window::about_to_show_screen() recreates this card's buffers for a
+	// fresh visit - including the live drag-preview redraw that now happens
+	// mid-swipe (see setup_draggable_neighbour(true)), which can land well
+	// over ROTATE_INTERVAL_MS after this card's last real pick. Without this
+	// guard, that preview redraw picks a headline of its own, then
+	// on_screen_shown() (called once the swipe actually settles) can pick a
+	// second, different one just a few seconds later, right as the user
+	// starts reading - the rotate timer only owns picks once truly settled
+	// (steady-state, is_dirty_hard already false); a fresh show is
+	// on_screen_shown()'s/a data refresh's call to make instead.
+	if (has_data && !is_dirty_hard && millis() - last_pick_at > ROTATE_INTERVAL_MS)
 		pick_random_headline();
 
 	bool was_dirty = false;

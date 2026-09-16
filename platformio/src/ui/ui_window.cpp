@@ -130,38 +130,60 @@ void ui_window::about_to_close_screen()
 
 void ui_window::about_to_show_screen()
 {
+	// Tracked so the "force a repaint" block below only fires when a buffer
+	// actually needed recreating - about_to_show_screen() can be called more
+	// than once for the same visit (see setup_draggable_neighbour(true),
+	// which calls this eagerly for the live drag preview, and finish_drag()
+	// calls it again once the swipe commits), and forcing a full ~130ms
+	// repaint on every one of those would reintroduce jank during the drag
+	// itself rather than fixing it.
+	bool recreated = false;
+
 	if (!_sprite_back.getBuffer())
+	{
 		_sprite_back.create(_w, _h);
+		recreated = true;
+	}
 	if (!_sprite_content.getBuffer())
+	{
 		_sprite_content.create(_w, _h);
+		recreated = true;
+	}
 	if (!_sprite_mixed.getBuffer())
+	{
 		_sprite_mixed.create(_w, _h);
+		recreated = true;
+	}
 	if (!_sprite_clean.getBuffer())
 	{
 		_sprite_clean.create(_w, _h);
 		squixl.lcd.readImage(_x, _y, _w, _h, (uint16_t *)_sprite_clean.getBuffer());
+		recreated = true;
 	}
 
-	// Buffers just came back from being blank/released - every subclass's
-	// redraw() (including the card widgets, which override redraw()
-	// entirely rather than calling this class's own) gates its repaint on
-	// one of these two flags, so this guarantees a full repaint into the
-	// freshly-recreated buffers on the very next redraw() rather than
-	// assuming stale content is still there.
-	is_dirty = true;
-	is_dirty_hard = true;
+	if (recreated)
+	{
+		// Buffers just came back from being blank/released - every
+		// subclass's redraw() (including the card widgets, which override
+		// redraw() entirely rather than calling this class's own) gates its
+		// repaint on one of these two flags, so this guarantees a full
+		// repaint into the freshly-recreated buffers on the very next
+		// redraw() rather than assuming stale content is still there.
+		is_dirty = true;
+		is_dirty_hard = true;
 
-	// is_dirty/is_dirty_hard alone don't get redraw() actually called,
-	// though - ui_screen::position_children() only calls a child's redraw()
-	// once child->should_refresh() says so, which is a plain
-	// next_refresh/refresh_interval timer check with no idea a hard refresh
-	// is now overdue. Most of these cards use a multi-second interval (e.g.
-	// 2000ms), so without this, a freshly-recreated (blank) card would sit
-	// visibly blank/grey for up to that whole interval after every single
-	// navigation to it, until its own timer happened to allow the next
-	// redraw() - forcing that timer to fire on the very next check instead
-	// makes the repaint immediate.
-	next_refresh = 0;
+		// is_dirty/is_dirty_hard alone don't get redraw() actually called,
+		// though - ui_screen::position_children() only calls a child's
+		// redraw() once child->should_refresh() says so, which is a plain
+		// next_refresh/refresh_interval timer check with no idea a hard
+		// refresh is now overdue. Most of these cards use a multi-second
+		// interval (e.g. 2000ms), so without this, a freshly-recreated
+		// (blank) card would sit visibly blank/grey for up to that whole
+		// interval after every single navigation to it, until its own timer
+		// happened to allow the next redraw() - forcing that timer to fire
+		// on the very next check instead makes the repaint immediate.
+		next_refresh = 0;
+	}
 
 	for (int w = 0; w < ui_children.size(); w++)
 		ui_children[w]->about_to_show_screen();

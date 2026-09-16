@@ -894,6 +894,16 @@ void ui_screen::clean_neighbour_sprites()
 		if (navigation[i] != nullptr)
 		{
 			// Serial.printf("clearing buffers in neighbour %d\n", i);
+			// Mirrors setup_draggable_neighbour(true)'s eager
+			// about_to_show_screen() call - this runs both when a drag
+			// commits (finish_drag() calling this on the new current
+			// screen's OWN neighbours, which harmlessly re-closes the
+			// already-closed old screen among them) and when one is
+			// cancelled (cancel_drag()), so a neighbour that was shown for a
+			// drag preview but didn't end up staying current always gets its
+			// widget buffers released again here, not left permanently
+			// allocated.
+			navigation[i]->about_to_close_screen();
 			navigation[i]->clear_buffers();
 		}
 	}
@@ -989,6 +999,19 @@ void ui_screen::setup_draggable_neighbour(bool state)
 	{
 		Serial.printf("setup_draggable_neighbour(true) on %p\n", (void *)this);
 		create_buffers();
+
+		// This screen's own 480x480 buffers exist now, but a child card
+		// widget's own 4 sprites were released when this screen was last
+		// closed (see ui_window::about_to_close_screen()) and stay that way
+		// until about_to_show_screen() recreates them - without this,
+		// position_children(true) below forces every child to redraw right
+		// now for the live drag preview, but draws into buffers that don't
+		// exist yet (every UM_GFX_Canvas draw call silently no-ops on a null
+		// buffer), so the incoming card showed as blank/grey for the whole
+		// drag and only appeared once finish_drag() finally called this same
+		// method again at the end.
+		about_to_show_screen();
+
 		if (position_children(true))
 		{
 			// Serial.println("Children ready for drag");
@@ -997,6 +1020,7 @@ void ui_screen::setup_draggable_neighbour(bool state)
 	else if (!state)
 	{
 		// not being called anymore
+		about_to_close_screen();
 		clear_buffers();
 	}
 }
