@@ -6,9 +6,10 @@ This is a fork of the Unexpected Maker SQUiXL project with four new full-screen 
 * Markets - up to six stock/index/currency symbols from Yahoo Finance
 * Weather - OpenWeather forecast
 * Calendar - Next six events in your Google Calendar
+* News - Headlines from the New York Times "top-stories" API
 * OTA progress bar - shows status during OTA firmware updates
 
-<img src="./clock.png" width="240"/> <img src="./markets.png" width="240"/> <img src="./weather.png" width="240"/> <img src="./calendar.png" width="240"/> <img src="./ota.jpg" width="240"/>
+<img src="./clock.png" width="240"/> <img src="./markets.png" width="240"/> <img src="./weather.png" width="240"/> <img src="./calendar.png" width="240"/> <img src="./news.png" width="240"><img src="./ota.jpg" width="240"/>
 
 # SQUiXL Official Shipping Firmware V2
 
