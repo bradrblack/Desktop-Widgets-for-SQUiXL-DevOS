@@ -23,6 +23,14 @@ class ui_window : public ui_element
 
 		bool process_touch(touch_event_t touch_event) override;
 
+		// Frees/recreates this window's 4 full-size sprites (_sprite_back,
+		// _sprite_content, _sprite_mixed, _sprite_clean) on the same
+		// show/close events ui_screen already uses to manage its own
+		// buffers - see ui_window.cpp for why these were previously left
+		// permanently allocated instead.
+		void about_to_show_screen() override;
+		void about_to_close_screen() override;
+
 	protected:
 		int16_t _adj_x;			// alignment adjusted draw pos x
 		int16_t _adj_y;			// alignment adjusted draw pos y

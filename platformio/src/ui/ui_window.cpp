@@ -102,6 +102,59 @@ bool ui_window::redraw(uint8_t fade_amount, int8_t tab_group)
 	return true;
 }
 
+// These 4 sprites are the same size class as a screen's own full-size
+// buffers (a card is typically 440x440 against the screen's 480x480), but
+// unlike a screen's buffers - which are deliberately freed/recreated on
+// exactly these events, specifically to keep PSRAM available for whichever
+// screens actually need a full buffer right now (see
+// ui_screen::create_buffers()/clear_buffers()) - a window's sprites were
+// only ever allocated once in create() and never released again. With
+// several persistent card widgets (Markets/Weather/Calendar/News) each
+// holding 4 such buffers for their entire lifetime regardless of whether
+// their screen is ever visible, that leaves too little contiguous PSRAM for
+// two neighbouring screens' buffers to coexist during a swipe - observed as
+// "create_buffers: FAILED to allocate _sprite_back (480x480)" with the
+// largest free PSRAM chunk stuck just under the ~460800 bytes needed.
+// Matching the screen's own discipline here fixes that at the source rather
+// than trying to shrink any one widget's footprint.
+void ui_window::about_to_close_screen()
+{
+	_sprite_back.release();
+	_sprite_content.release();
+	_sprite_mixed.release();
+	_sprite_clean.release();
+
+	for (int w = 0; w < ui_children.size(); w++)
+		ui_children[w]->about_to_close_screen();
+}
+
+void ui_window::about_to_show_screen()
+{
+	if (!_sprite_back.getBuffer())
+		_sprite_back.create(_w, _h);
+	if (!_sprite_content.getBuffer())
+		_sprite_content.create(_w, _h);
+	if (!_sprite_mixed.getBuffer())
+		_sprite_mixed.create(_w, _h);
+	if (!_sprite_clean.getBuffer())
+	{
+		_sprite_clean.create(_w, _h);
+		squixl.lcd.readImage(_x, _y, _w, _h, (uint16_t *)_sprite_clean.getBuffer());
+	}
+
+	// Buffers just came back from being blank/released - every subclass's
+	// redraw() (including the card widgets, which override redraw()
+	// entirely rather than calling this class's own) gates its repaint on
+	// one of these two flags, so this guarantees a full repaint into the
+	// freshly-recreated buffers on the very next redraw() rather than
+	// assuming stale content is still there.
+	is_dirty = true;
+	is_dirty_hard = true;
+
+	for (int w = 0; w < ui_children.size(); w++)
+		ui_children[w]->about_to_show_screen();
+}
+
 bool ui_window::process_touch(touch_event_t touch_event)
 {
 	// Did any of my children recieve this touch event?
