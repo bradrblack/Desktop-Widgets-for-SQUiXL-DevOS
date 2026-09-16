@@ -151,6 +151,18 @@ void ui_window::about_to_show_screen()
 	is_dirty = true;
 	is_dirty_hard = true;
 
+	// is_dirty/is_dirty_hard alone don't get redraw() actually called,
+	// though - ui_screen::position_children() only calls a child's redraw()
+	// once child->should_refresh() says so, which is a plain
+	// next_refresh/refresh_interval timer check with no idea a hard refresh
+	// is now overdue. Most of these cards use a multi-second interval (e.g.
+	// 2000ms), so without this, a freshly-recreated (blank) card would sit
+	// visibly blank/grey for up to that whole interval after every single
+	// navigation to it, until its own timer happened to allow the next
+	// redraw() - forcing that timer to fire on the very next check instead
+	// makes the repaint immediate.
+	next_refresh = 0;
+
 	for (int w = 0; w < ui_children.size(); w++)
 		ui_children[w]->about_to_show_screen();
 }
