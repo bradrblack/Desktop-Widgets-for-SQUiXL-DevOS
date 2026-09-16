@@ -291,13 +291,6 @@ void widgetNews::pick_random_headline()
 	last_pick_at = millis();
 }
 
-void widgetNews::on_screen_shown()
-{
-	if (millis() - last_pick_at < 3000)
-		return;
-	pick_random_headline();
-}
-
 void widgetNews::process_news_data(bool success, const String &response)
 {
 	bool ok = true;
@@ -356,19 +349,28 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 
 	maybe_fetch();
 
-	// is_dirty_hard is true both at boot and right after
-	// ui_window::about_to_show_screen() recreates this card's buffers for a
-	// fresh visit - including the live drag-preview redraw that now happens
-	// mid-swipe (see setup_draggable_neighbour(true)), which can land well
-	// over ROTATE_INTERVAL_MS after this card's last real pick. Without this
-	// guard, that preview redraw picks a headline of its own, then
-	// on_screen_shown() (called once the swipe actually settles) can pick a
-	// second, different one just a few seconds later, right as the user
-	// starts reading - the rotate timer only owns picks once truly settled
-	// (steady-state, is_dirty_hard already false); a fresh show is
-	// on_screen_shown()'s/a data refresh's call to make instead.
-	if (has_data && !is_dirty_hard && millis() - last_pick_at > ROTATE_INTERVAL_MS)
-		pick_random_headline();
+	// is_dirty_hard is true exactly once per real visit to this screen - set
+	// by ui_window::about_to_show_screen() the moment this card's buffers
+	// are freshly recreated (both for the live drag-preview mid-swipe and,
+	// redundantly but harmlessly, again once the swipe settles - only the
+	// first of those two actually recreates anything). That's the one
+	// deterministic "the user is now looking at this" signal available
+	// before any redraw happens, unlike main.cpp's separate screen-
+	// transition check, which only runs after finish_drag() has already
+	// driven at least one (sometimes two) redraw() calls of its own -
+	// letting the periodic rotate check fire on one of those raced ahead of
+	// a dedicated "just arrived" hook and picked its own headline a moment
+	// before the dedicated hook's, showing as two different headlines about
+	// a second apart. Doing the fresh-arrival pick right here instead, and
+	// only falling back to the elapsed-time rotate once truly settled
+	// (is_dirty_hard already false), removes that race entirely.
+	if (has_data)
+	{
+		if (is_dirty_hard)
+			pick_random_headline();
+		else if (millis() - last_pick_at > ROTATE_INTERVAL_MS)
+			pick_random_headline();
+	}
 
 	bool was_dirty = false;
 

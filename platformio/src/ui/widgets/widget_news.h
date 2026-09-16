@@ -9,7 +9,7 @@
 // parse - see widget_news.cpp's NewsSax for why that keeps this safe despite
 // the response being much larger than e.g. the Markets card's. Shows one
 // random headline at a time; re-picks whenever this screen becomes current
-// (see main.cpp's screen-transition tracking) or on tap.
+// (see redraw()'s is_dirty_hard check) or on tap.
 class widgetNews : public ui_window
 {
 	public:
@@ -29,21 +29,12 @@ class widgetNews : public ui_window
 
 		// Picks a new random headline from the cached collection, different
 		// from the one currently shown when more than one is available, and
-		// stamps last_pick_at. Called directly by a data refresh
-		// (process_news_data()), a deliberate tap (process_touch()), and the
-		// 60s idle auto-rotate in redraw(). For the screen-entry trigger, use
-		// on_screen_shown() instead (see below).
+		// stamps last_pick_at. Called by a data refresh (process_news_data()),
+		// a deliberate tap (process_touch()), a fresh screen-entry, and the
+		// 60s idle auto-rotate - see redraw()'s is_dirty_hard check for why
+		// the screen-entry case is handled there rather than via a separate
+		// hook.
 		void pick_random_headline();
-
-		// Screen-entry version of the above - main.cpp calls this (not
-		// pick_random_headline() directly) whenever this becomes the current
-		// screen. Debounced against last_pick_at: entering the screen can
-		// coincide with a just-finished data refresh (e.g. saving a
-		// freshly-entered API key re-fetches immediately, then the user
-		// swipes over to check it), which already picked a headline of its
-		// own moments earlier - without this, that shows as one headline
-		// being visibly swapped for another right after landing on the card.
-		void on_screen_shown();
 
 	private:
 		std::vector<std::string> headlines;
@@ -52,10 +43,9 @@ class widgetNews : public ui_window
 		unsigned long next_update = 0;
 		unsigned long fetch_started_at = 0;
 		unsigned long last_shuffle_at = 0;
-		// Shared by every pick_random_headline() caller - both the 3s
-		// screen-entry debounce and the 60s idle auto-rotate below key off
-		// this same timestamp so they can't fight each other into a rapid
-		// double-change.
+		// Stamped by every pick_random_headline() call - redraw()'s 60s
+		// idle auto-rotate keys off this so it can't re-pick again right
+		// after a fresh-entry or data-refresh pick already changed it.
 		unsigned long last_pick_at = 0;
 		bool is_fetching = false;
 		bool should_redraw = false;

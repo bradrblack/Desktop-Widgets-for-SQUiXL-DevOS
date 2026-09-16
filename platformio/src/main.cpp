@@ -1028,14 +1028,6 @@ void loop()
 		widget_play_pause->force_redraw();
 	}
 
-	// Pick a fresh random headline every time this screen becomes current,
-	// same screen-transition event used above for the play/pause icon.
-	// on_screen_shown() (not pick_random_headline() directly) debounces
-	// against a data refresh that may have just picked one of its own.
-	if (now_current_screen != last_current_screen && now_current_screen == screen_news)
-	{
-		widget_news->on_screen_shown();
-	}
 	last_current_screen = now_current_screen;
 
 	// Auto-advance the carousel while playing - walks navigation[LEFT] on a
