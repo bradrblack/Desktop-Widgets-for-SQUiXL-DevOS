@@ -18,7 +18,8 @@ void ui_window::create(int16_t pos_x, int16_t pos_y, int16_t width, int16_t heig
 	_font = UbuntuMono_R[1];
 
 	_sprite_back.create(_w, _h);
-	_sprite_content.create(_w, _h);
+	if (needs_own_content_sprite())
+		_sprite_content.create(_w, _h);
 	_sprite_mixed.create(_w, _h);
 
 	// Create the sprite to hold the clean background of the window
@@ -144,7 +145,7 @@ void ui_window::about_to_show_screen()
 		_sprite_back.create(_w, _h);
 		recreated = true;
 	}
-	if (!_sprite_content.getBuffer())
+	if (needs_own_content_sprite() && !_sprite_content.getBuffer())
 	{
 		_sprite_content.create(_w, _h);
 		recreated = true;

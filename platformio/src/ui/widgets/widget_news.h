@@ -36,6 +36,12 @@ class widgetNews : public ui_window
 		// hook.
 		void pick_random_headline();
 
+	protected:
+		// This card fully overrides redraw() and only ever draws into
+		// ui_parent->_sprite_content (the screen's) - its own inherited
+		// _sprite_content is never touched, so skip allocating it entirely.
+		bool needs_own_content_sprite() override { return false; }
+
 	private:
 		std::vector<std::string> headlines;
 		std::string current_headline;

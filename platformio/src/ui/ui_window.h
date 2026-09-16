@@ -32,6 +32,18 @@ class ui_window : public ui_element
 		void about_to_close_screen() override;
 
 	protected:
+		// A window that fully overrides redraw() (every current card widget
+		// - Markets/Weather/Calendar/News - does) only ever draws into
+		// ui_parent->_sprite_content (the SCREEN's, not this window's own),
+		// leaving its own _sprite_content sitting permanently allocated and
+		// completely unused - one whole extra card-sized buffer per widget,
+		// for nothing. Override to return false to skip allocating/
+		// recreating it. Anything relying on this class's own default
+		// redraw() below (which does draw into its own _sprite_content) must
+		// leave this at the default.
+		virtual bool needs_own_content_sprite() { return true; }
+
+
 		int16_t _adj_x;			// alignment adjusted draw pos x
 		int16_t _adj_y;			// alignment adjusted draw pos y
 		uint8_t padding_l = 10; // left padding for window content

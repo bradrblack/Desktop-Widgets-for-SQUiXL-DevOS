@@ -41,6 +41,12 @@ class widgetCalendar : public ui_window
 		// changed URL takes effect without requiring a reboot.
 		void reload_events();
 
+	protected:
+		// This card fully overrides redraw() and only ever draws into
+		// ui_parent->_sprite_content (the screen's) - its own inherited
+		// _sprite_content is never touched, so skip allocating it entirely.
+		bool needs_own_content_sprite() override { return false; }
+
 	private:
 		std::vector<AgendaEvent> events;
 		psram_string ics_url;
