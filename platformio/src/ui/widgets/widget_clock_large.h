@@ -23,4 +23,8 @@ class widgetClockLarge : public ui_element
 
 		uint16_t _glyph_w = 0;
 		uint16_t _glyph_h = 0;
+
+		uint8_t _rainbow_step = 0;
+		bool _last_rainbow = false;
+		uint16_t _last_color = 0;
 };

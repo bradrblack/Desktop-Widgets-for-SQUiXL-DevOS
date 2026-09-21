@@ -232,6 +232,12 @@ struct Config
 		// Seconds the carousel dwells on each screen before auto-swiping
 		int autoswipe_secs = 60;
 
+		// Draw the big clock digits as a lolcat-style rainbow instead of a solid colour
+		bool clock_rainbow = true;
+
+		// Solid digit colour used when the rainbow is off (RGB565; default is the theme's warm off-white)
+		uint16_t clock_color = 0xEF3C;
+
 		bool autostart_webserver = false;
 
 		uint16_t case_color = 6371;
@@ -374,6 +380,8 @@ class Settings
 			settings_groups.push_back({"News Settings", SettingType::WIDGET, "Add your New York Times Top Stories API key here (developer.nytimes.com) to show a random headline on the News card. The story collection refreshes every 30 minutes; tap the card to show another random headline immediately."});
 
 			settings_groups.push_back({"Auto-Swipe Settings", SettingType::WIDGET, "The carousel starts on the clock and swipes through the cards automatically. Set how long each screen stays up before swiping to the next. Touching the screen pauses it; tap the play button on the clock to resume."});
+
+			settings_groups.push_back({"Clock Settings", SettingType::WIDGET, "Draw the big clock digits as a rainbow gradient instead of a solid colour. The rainbow shifts a little every minute. Pick RAINBOW or SOLID, and choose the solid colour to use when the rainbow is off."});
 		}
 
 		void init();
@@ -490,6 +498,10 @@ class Settings
 
 		// Auto-swipe carousel
 		SettingsOptionIntRange autoswipe_duration{&config.autoswipe_secs, 5, 600, 5, false, 13, "Auto-Swipe Duration (Sec)"};
+
+		// Clock
+		SettingsOptionBool clock_rainbow_option{&config.clock_rainbow, 14, "Digit Colour", "SOLID", "RAINBOW"};
+		SettingsOptionColor565 clock_color_option{&config.clock_color, 14, "Solid Digit Colour"};
 
 		// ==== ASYNC SUPPORT ====
 	public:

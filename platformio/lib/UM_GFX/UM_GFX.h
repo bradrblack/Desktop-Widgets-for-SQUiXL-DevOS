@@ -113,6 +113,13 @@ class UM_GFX_Canvas : public Print
 		void setScroll(bool enable);
 		void setScrollPosition(int lines);
 		void setAntialias(bool enable) { _antialias = enable; }
+		// Antialiased text only: colour each glyph pixel from a diagonal rainbow instead of the
+		// text colour. phase (0-255) rotates the hue; the coverage blend against the bg is unchanged.
+		void setRainbow(bool enable, uint8_t phase = 0)
+		{
+			_rainbow = enable;
+			_rainbow_phase = phase;
+		}
 		void setPrintFlags(int flags) { _print_flags = flags; }
 		int printFlags() const { return _print_flags; }
 		void setFont(int iFont);
@@ -148,6 +155,8 @@ class UM_GFX_Canvas : public Print
 		bool _scroll_enabled = false;
 		int _scroll_offset = 0;
 		bool _antialias = false;
+		bool _rainbow = false;
+		uint8_t _rainbow_phase = 0;
 		int _print_flags = 0;
 		bool _window_active = false;
 		int _window_x = 0;

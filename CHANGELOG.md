@@ -8,6 +8,11 @@ Notable changes in this fork, grouped by feature rather than by commit.
 - Added a play/pause control on the Clock screen. Tapping it auto-advances through the loop on a timer (first hop after ~2s so it's obvious it's running, then every 60s), using the same slide-transition animation a manual swipe uses (`ui_screen::animate_transition()`) rather than a hard screen-cut. Any touch elsewhere pauses it again.
 - Added a `squixl-ota` PlatformIO environment (`pio run -e squixl-ota -t upload`) for pushing firmware over WiFi via `espota` once the device has been flashed once over USB.
 
+## Clock
+
+- The big clock digits are now drawn as a rainbow gradient by default: one hue sweep across the whole clock (no repeated colours), shifting a little every minute. `UM_GFX_Canvas::setRainbow()` colours antialiased glyph pixels from a 256-entry hue table inside `drawGlyphAA`. Pure magenta (`0xF81F`) is nudged off, since the screens use it as their transparent colour key.
+- New "Clock Settings" group in the web portal: a SOLID/RAINBOW toggle and a full colour picker for the solid colour used when the rainbow is off.
+
 ## Markets Card
 
 - Up to 6 ticker/label pairs, configurable from the web portal's "Markets Settings" group, live-reloading without a reboot when saved.

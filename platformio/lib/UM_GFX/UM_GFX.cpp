@@ -977,6 +977,38 @@ void UM_GFX_Canvas::drawGlyphAA(const GFXfont &font, const GFXglyph &glyph, int1
 	int bg_r = (bg565 >> 11) & 0x1F, bg_g = (bg565 >> 5) & 0x3F, bg_b = bg565 & 0x1F;
 	int fg_r = (fg565 >> 11) & 0x1F, fg_g = (fg565 >> 5) & 0x3F, fg_b = fg565 & 0x1F;
 
+	// 256-step full-saturation hue wheel in RGB565 (r5, g6, b5), built on first use
+	static uint16_t rainbow_lut[256];
+	static bool rainbow_ready = false;
+	if (_rainbow && !rainbow_ready)
+	{
+		for (int i = 0; i < 256; ++i)
+		{
+			int seg6 = (i * 6) >> 8;			   // 0-5
+			int f = (i * 6) - (seg6 << 8);		   // 0-255 within the segment
+			int r = 0, g = 0, b = 0;
+			switch (seg6)
+			{
+			case 0: r = 255; g = f; b = 0; break;
+			case 1: r = 255 - f; g = 255; b = 0; break;
+			case 2: r = 0; g = 255; b = f; break;
+			case 3: r = 0; g = 255 - f; b = 255; break;
+			case 4: r = f; g = 0; b = 255; break;
+			default: r = 255; g = 0; b = 255 - f; break;
+			}
+			// Pure magenta (0xF81F) is the screens' transparent colour key (TFT_MAGENTA), so a rainbow
+			// pixel with exactly that value would punch a hole through the digit - nudge it off.
+			uint16_t c = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+			rainbow_lut[i] = (c == 0xF81F) ? 0xF81E : c;
+		}
+		rainbow_ready = true;
+	}
+
+	// Spread the hue wheel over the whole canvas (200/256 across x plus 30/256 down y) so it
+	// never repeats a colour on screen; the small shortfall keeps the two ends from matching.
+	const int rainbow_kx = (200 << 8) / (_width > 0 ? _width : 1);
+	const int rainbow_ky = (30 << 8) / (_height > 0 ? _height : 1);
+
 	uint32_t bo = glyph.bitmapOffset;
 
 	for (int yy = 0; yy < glyph.height; ++yy)
@@ -995,6 +1027,14 @@ void UM_GFX_Canvas::drawGlyphAA(const GFXfont &font, const GFXglyph &glyph, int1
 			if (dest_x < 0 || dest_x >= _width || coverage == 0)
 				continue;
 
+			if (_rainbow)
+			{
+				fg565 = rainbow_lut[(uint8_t)(((dest_x * rainbow_kx + dest_y * rainbow_ky) >> 8) + _rainbow_phase)];
+				fg_r = (fg565 >> 11) & 0x1F;
+				fg_g = (fg565 >> 5) & 0x3F;
+				fg_b = fg565 & 0x1F;
+			}
+
 			uint16_t out;
 			if (coverage >= 255)
 			{
@@ -1007,6 +1047,9 @@ void UM_GFX_Canvas::drawGlyphAA(const GFXfont &font, const GFXglyph &glyph, int1
 				int b = bg_b + (((fg_b - bg_b) * coverage) >> 8);
 				out = (uint16_t)((r << 11) | (g << 5) | b);
 			}
+
+			if (_rainbow && out == 0xF81F)
+				out = 0xF81E;
 
 			_pixels[dest_y * _width + dest_x] = encode565(out);
 		}

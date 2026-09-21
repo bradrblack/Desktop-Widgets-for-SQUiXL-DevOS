@@ -59,6 +59,14 @@ bool widgetClockLarge::redraw(uint8_t fade_amount, int8_t tab_group)
 		changed = true;
 	}
 
+	// Re-render immediately when the rainbow or solid colour setting changes, not at the next minute
+	if (settings.config.clock_rainbow != _last_rainbow || settings.config.clock_color != _last_color)
+	{
+		_last_rainbow = settings.config.clock_rainbow;
+		_last_color = settings.config.clock_color;
+		changed = true;
+	}
+
 	if (changed && !_time_string.empty())
 	{
 		// The canvas stays sized for the widest possible string ("88:88") so
@@ -77,7 +85,11 @@ bool widgetClockLarge::redraw(uint8_t fade_amount, int8_t tab_group)
 		// fillRect() below exactly.
 		_sprite_content.fillRect(0, 0, _w, _h, dashboard_theme::background);
 		_sprite_content.setFreeFont(&UbuntuMono_Bold88pt7bAA);
-		_sprite_content.setTextColor(dashboard_theme::text_primary, dashboard_theme::background);
+		// Pure magenta is the screens' transparent colour key, so a picked solid colour of exactly that would vanish
+		uint16_t solid = (settings.config.clock_color == TFT_MAGENTA) ? (uint16_t)(TFT_MAGENTA - 1) : settings.config.clock_color;
+		_sprite_content.setTextColor(solid, dashboard_theme::background);
+		// Hue offset moves 7 steps per minute so the rainbow drifts as the time changes
+		_sprite_content.setRainbow(settings.config.clock_rainbow, (uint8_t)(_rainbow_step += 7));
 		_sprite_content.setCursor(cursor_x, _glyph_h + 2);
 		_sprite_content.print(_time_string.c_str());
 	}
