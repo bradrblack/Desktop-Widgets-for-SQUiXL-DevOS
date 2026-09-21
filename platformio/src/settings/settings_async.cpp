@@ -20,7 +20,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_widget_stocks, label1, ti
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_widget_calendar, ics_url);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_widget_news, api_key);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config_expansion, bme280_address, bme280_installed);
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config, first_time, current_screen, ota_start, wifi_tx_power, wifi_options, current_wifi_station, wifi_check_for_updates, use_local_dns, mdns_name, case_color, ntp_server, city, state, country, lon, lat, utc_offset, time_24hour, time_dateformat, volume, current_background, backlight_time_step_battery, backlight_time_step_vbus, sleep_vbus, sleep_battery, open_weather, rss_feed, stocks, calendar, news, audio, mqtt, haptics, screenshot, user_wallpaper, location);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config, first_time, current_screen, ota_start, wifi_tx_power, wifi_options, current_wifi_station, wifi_check_for_updates, use_local_dns, mdns_name, case_color, ntp_server, city, state, country, lon, lat, utc_offset, time_24hour, time_dateformat, volume, current_background, backlight_time_step_battery, backlight_time_step_vbus, sleep_vbus, sleep_battery, open_weather, rss_feed, stocks, calendar, news, audio, mqtt, haptics, screenshot, user_wallpaper, location, autoswipe_secs);
 
 static uint32_t min_clk_freq = 6000000;
 static uint32_t max_clk_freq = 7000000;
@@ -423,6 +423,9 @@ void Settings::init()
 
 	// News
 	widget_news_apikey.register_option();
+
+	// Auto-swipe
+	autoswipe_duration.register_option();
 
 	// Expansion
 	expansion_bme_address.register_option();

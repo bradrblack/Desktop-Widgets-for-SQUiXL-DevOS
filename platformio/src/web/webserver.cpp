@@ -159,9 +159,15 @@ String WebServer::processor(const String &var)
 	else if (var == "SETTING_OPTIONS_WIDGETS")
 	{
 		String html = "";
+		// Auto-swipe applies to the whole carousel, so list it first
 		for (size_t i = 0; i < settings.settings_groups.size(); i++)
 		{
-			if (settings.settings_groups[i].type == SettingType::WIDGET)
+			if (settings.settings_groups[i].type == SettingType::WIDGET && settings.settings_groups[i].name == "Auto-Swipe Settings")
+				html += generate_settings_html(i);
+		}
+		for (size_t i = 0; i < settings.settings_groups.size(); i++)
+		{
+			if (settings.settings_groups[i].type == SettingType::WIDGET && settings.settings_groups[i].name != "Auto-Swipe Settings")
 				html += generate_settings_html(i);
 		}
 

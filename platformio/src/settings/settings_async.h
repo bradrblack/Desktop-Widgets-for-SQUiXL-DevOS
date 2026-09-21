@@ -229,6 +229,9 @@ struct Config
 
 		bool user_wallpaper = false;
 
+		// Seconds the carousel dwells on each screen before auto-swiping
+		int autoswipe_secs = 60;
+
 		bool autostart_webserver = false;
 
 		uint16_t case_color = 6371;
@@ -306,6 +309,7 @@ enum SettingType
 	WIDGET,
 	THEME,
 	SCREENIE,
+	HIDDEN, // group exists (option indexes depend on it) but no web page lists it
 };
 
 struct setting_group
@@ -357,17 +361,19 @@ class Settings
 
 			settings_groups.push_back({"Screenie", SettingType::SCREENIE});
 
-			settings_groups.push_back({"RSS Feed Settings", SettingType::WIDGET, "Add your RSS Feed URL here to be able to see your favourte RSS feed on your SQUiXL."});
+			settings_groups.push_back({"RSS Feed Settings", SettingType::HIDDEN, "Add your RSS Feed URL here to be able to see your favourte RSS feed on your SQUiXL."});
 
 			settings_groups.push_back({"Location Settings", SettingType::WEB});
 
-			settings_groups.push_back({"Expansion Settings", SettingType::WIDGET, "I2C Expansion Port Settings"});
+			settings_groups.push_back({"Expansion Settings", SettingType::HIDDEN, "I2C Expansion Port Settings"});
 
 			settings_groups.push_back({"Markets Settings", SettingType::WIDGET, "Configure up to 6 symbols shown on the Markets card. Tickers must match Yahoo Finance's own symbol format (search finance.yahoo.com to confirm one before entering it here) - e.g. AAPL for Apple, BCE.TO for a Toronto Stock Exchange listing, ^GSPC for the S&P 500 index, or CADUSD=X for a currency pair. Leave a ticker blank to skip that row."});
 
 			settings_groups.push_back({"Calendar Settings", SettingType::WIDGET, "Paste a calendar's secret iCal address here to show its next few upcoming events on the Agenda card. In Google Calendar: Settings > Settings for my calendars > [your calendar] > Integrate calendar > Secret address in iCal format. Recurring events are shown only at their original time - recurrence isn't expanded."});
 
 			settings_groups.push_back({"News Settings", SettingType::WIDGET, "Add your New York Times Top Stories API key here (developer.nytimes.com) to show a random headline on the News card. The story collection refreshes every 30 minutes; tap the card to show another random headline immediately."});
+
+			settings_groups.push_back({"Auto-Swipe Settings", SettingType::WIDGET, "The carousel starts on the clock and swipes through the cards automatically. Set how long each screen stays up before swiping to the next. Touching the screen pauses it; tap the play button on the clock to resume."});
 		}
 
 		void init();
@@ -481,6 +487,9 @@ class Settings
 
 		// News (NYT Top Stories) - see Config_widget_news
 		SettingsOptionString widget_news_apikey{&config.news.api_key, 12, "API KEY", 0, -1, "", false};
+
+		// Auto-swipe carousel
+		SettingsOptionIntRange autoswipe_duration{&config.autoswipe_secs, 5, 600, 5, false, 13, "Auto-Swipe Duration (Sec)"};
 
 		// ==== ASYNC SUPPORT ====
 	public:

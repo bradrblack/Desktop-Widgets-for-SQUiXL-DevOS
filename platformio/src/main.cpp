@@ -50,7 +50,7 @@ widgetNews *widget_news = nullptr;
 
 // Carousel auto-advance - see widget_play_pause.h. Populated once the
 // carousel screens exist (end of setup_ui()) and driven from loop().
-bool carousel_playing = false;
+bool carousel_playing = true; // auto-swipe on by default
 bool carousel_was_touch_down = false;
 unsigned long carousel_touch_debounce_until = 0;
 unsigned long carousel_last_advance = 0;
@@ -729,6 +729,9 @@ Setup WiFi Manager Screen
 	// manager screen set above. News's RIGHT already correctly points back
 	// to calendar, set as the reverse of the link above.
 	screen_news->set_navigation(Directions::LEFT, screen_clock, false);
+
+	// Auto-swipe is on by default: dwell on the clock for a full interval first.
+	carousel_last_advance = millis();
 }
 
 bool wifi_requirements_checked = false;
@@ -1035,6 +1038,7 @@ void loop()
 	// clock -> ..., since weather's LEFT loops back to clock - see
 	// setup_ui()), but using the real slide-transition animation via
 	// animate_transition() instead of a hard screen-swap.
+	CAROUSEL_INTERVAL_MS = (unsigned long)settings.config.autoswipe_secs * 1000UL;
 	if (carousel_playing)
 	{
 		unsigned long elapsed = millis() - carousel_last_advance;
@@ -1106,6 +1110,7 @@ void loop()
 		{
 			// We were showing the first boot screen, so no current screen is set yet.
 			squixl.set_current_screen(screen_clock);
+			carousel_last_advance = millis(); // full dwell on the clock before the first swipe
 		}
 
 		if (wifiSetup.is_done())
