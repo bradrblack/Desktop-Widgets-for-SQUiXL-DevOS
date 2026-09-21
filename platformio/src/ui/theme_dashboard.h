@@ -5,7 +5,7 @@
 // Low-saturation palette shared by the dashboard screen and its widgets.
 namespace dashboard_theme
 {
-	constexpr uint16_t background = 0x2146; // muted dark slate
+	constexpr uint16_t background = 0x0841; // near-black (about RGB 8,8,8)
 	constexpr uint16_t card = 0x31C8;		  // slightly lighter muted slate
 	constexpr uint16_t header_bg = 0x3A4D;   // muted indigo, for card header bands
 	constexpr uint16_t card_track = 0x2A4F;  // gauge track, sits between background and card

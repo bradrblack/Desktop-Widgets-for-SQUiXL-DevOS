@@ -10,8 +10,12 @@ Notable changes in this fork, grouped by feature rather than by commit.
 
 ## Clock
 
-- The big clock digits are now drawn as a rainbow gradient by default: one hue sweep across the whole clock (no repeated colours), shifting a little every minute. `UM_GFX_Canvas::setRainbow()` colours antialiased glyph pixels from a 256-entry hue table inside `drawGlyphAA`. Pure magenta (`0xF81F`) is nudged off, since the screens use it as their transparent colour key.
+- The big clock digits are now drawn as a rainbow gradient by default: a gentle gradient covering about half the hue wheel across the clock (no repeated colours), shifting a little every minute. `UM_GFX_Canvas::setRainbow()` colours antialiased glyph pixels from a 256-entry hue table inside `drawGlyphAA`. Pure magenta (`0xF81F`) is nudged off, since the screens use it as their transparent colour key.
 - New "Clock Settings" group in the web portal: a SOLID/RAINBOW toggle and a full colour picker for the solid colour used when the rainbow is off.
+
+## Theme
+
+- The shared dashboard background is now near-black (`dashboard_theme::background`, about RGB 8,8,8) instead of muted slate.
 
 ## Markets Card
 

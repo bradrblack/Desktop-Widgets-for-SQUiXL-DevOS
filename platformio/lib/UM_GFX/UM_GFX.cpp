@@ -1004,10 +1004,10 @@ void UM_GFX_Canvas::drawGlyphAA(const GFXfont &font, const GFXglyph &glyph, int1
 		rainbow_ready = true;
 	}
 
-	// Spread the hue wheel over the whole canvas (200/256 across x plus 30/256 down y) so it
-	// never repeats a colour on screen; the small shortfall keeps the two ends from matching.
-	const int rainbow_kx = (200 << 8) / (_width > 0 ? _width : 1);
-	const int rainbow_ky = (30 << 8) / (_height > 0 ? _height : 1);
+	// Spread about half the hue wheel over the canvas (100/256 across x plus 15/256 down y) for a
+	// slow, gentle gradient rather than a full rainbow.
+	const int rainbow_kx = (100 << 8) / (_width > 0 ? _width : 1);
+	const int rainbow_ky = (15 << 8) / (_height > 0 ? _height : 1);
 
 	uint32_t bo = glyph.bitmapOffset;
 
