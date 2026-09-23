@@ -1,5 +1,8 @@
 #include "ui/widgets/widget_weather_card.h"
 
+#include "fonts/ubuntu_mono_bold_14pt_aa.h"
+#include "fonts/ubuntu_mono_bold_18pt_aa.h"
+#include "fonts/ubuntu_mono_regular_7pt_aa.h"
 #include "peripherals/rtc.h"
 #include "ui/theme_dashboard.h"
 
@@ -466,6 +469,10 @@ bool widgetWeatherCard::redraw(uint8_t fade_amount, int8_t tab_group)
 		ui_parent->_sprite_back.readImage(_x, _y, _w, _h, (uint16_t *)_sprite_back.getBuffer());
 		delay(10);
 
+		// Antialiased text only - see UbuntuMono_Bold18pt7bAA's own header
+		// comment for why this can't mix with a 1-bit font on this canvas.
+		_sprite_back.setAntialias(true);
+
 		_sprite_clean.fillRect(0, 0, _w, _h, TFT_MAGENTA);
 		_sprite_clean.fillRoundRect(0, 0, _w, _h, 14, dashboard_theme::card);
 		squixl.lcd.blendSprite(&_sprite_clean, &_sprite_back, &_sprite_back, _t, TFT_MAGENTA);
@@ -477,8 +484,8 @@ bool widgetWeatherCard::redraw(uint8_t fade_amount, int8_t tab_group)
 		_sprite_back.fillRect(0, HEADER_H - CORNER_R, _w, CORNER_R, dashboard_theme::header_bg);
 
 		int hdr_w, hdr_h;
-		_sprite_back.setFreeFont(UbuntuMono_B[3]);
-		calc_text_size("Weather", UbuntuMono_B[3], &hdr_w, &hdr_h);
+		_sprite_back.setFreeFont(&UbuntuMono_Bold18pt7bAA);
+		calc_text_size("Weather", &UbuntuMono_Bold18pt7bAA, &hdr_w, &hdr_h);
 		_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 		_sprite_back.setCursor((_w - hdr_w) / 2, HEADER_H / 2 + hdr_h / 2);
 		_sprite_back.print("Weather");
@@ -488,8 +495,8 @@ bool widgetWeatherCard::redraw(uint8_t fade_amount, int8_t tab_group)
 			const char *msg = wifi_controller.is_connected() ? (settings.config.open_weather.has_key() ? "LOADING FORECAST..." : "NO API KEY SET") : "NO INTERNET";
 
 			int msg_w, msg_h;
-			_sprite_back.setFreeFont(UbuntuMono_B[2]);
-			calc_text_size(msg, UbuntuMono_B[2], &msg_w, &msg_h);
+			_sprite_back.setFreeFont(&UbuntuMono_Bold14pt7bAA);
+			calc_text_size(msg, &UbuntuMono_Bold14pt7bAA, &msg_w, &msg_h);
 			_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 			_sprite_back.setCursor((_w - msg_w) / 2, HEADER_H + (_h - HEADER_H) / 2);
 			_sprite_back.print(msg);
@@ -518,8 +525,8 @@ bool widgetWeatherCard::redraw(uint8_t fade_amount, int8_t tab_group)
 			// "Today" is the widest day label this list ever shows - measure it
 			// once and place the icon column after it, instead of a fixed
 			// offset that "Today" (5 chars) would overlap but "Thu" wouldn't.
-			_sprite_back.setFreeFont(UbuntuMono_B[2]);
-			calc_text_size("Today", UbuntuMono_B[2], &text_w, &text_h);
+			_sprite_back.setFreeFont(&UbuntuMono_Bold14pt7bAA);
+			calc_text_size("Today", &UbuntuMono_Bold14pt7bAA, &text_w, &text_h);
 			int16_t ICON_X = padding.left + text_w + 16;
 			int16_t LOW_X_END = ICON_X + ICON_SIZE + 90;
 			int16_t BAR_X = LOW_X_END + 14;
@@ -531,7 +538,7 @@ bool widgetWeatherCard::redraw(uint8_t fade_amount, int8_t tab_group)
 				int16_t row_top = row_y0 + (int16_t)i * row_h;
 				int16_t row_mid = row_top + row_h / 2;
 
-				_sprite_back.setFreeFont(UbuntuMono_B[2]);
+				_sprite_back.setFreeFont(&UbuntuMono_Bold14pt7bAA);
 				_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 				_sprite_back.setCursor(padding.left, row_mid + 6);
 				_sprite_back.print(d.label.c_str());
@@ -543,7 +550,7 @@ bool widgetWeatherCard::redraw(uint8_t fade_amount, int8_t tab_group)
 				{
 					char pop_buf[6];
 					snprintf(pop_buf, sizeof(pop_buf), "%d%%", d.precip_pct);
-					_sprite_back.setFreeFont(UbuntuMono_R[0]);
+					_sprite_back.setFreeFont(&UbuntuMono_Regular7pt7bAA);
 					_sprite_back.setTextColor(dashboard_theme::accent_teal, -1);
 					_sprite_back.setCursor(ICON_X, row_mid + ICON_SIZE / 2 + 12);
 					_sprite_back.print(pop_buf);
@@ -551,9 +558,9 @@ bool widgetWeatherCard::redraw(uint8_t fade_amount, int8_t tab_group)
 
 				char low_buf[6];
 				snprintf(low_buf, sizeof(low_buf), "%d\xB0", d.low);
-				_sprite_back.setFreeFont(UbuntuMono_B[2]);
+				_sprite_back.setFreeFont(&UbuntuMono_Bold14pt7bAA);
 				_sprite_back.setTextColor(dashboard_theme::text_secondary, -1);
-				calc_text_size(low_buf, UbuntuMono_B[2], &text_w, &text_h);
+				calc_text_size(low_buf, &UbuntuMono_Bold14pt7bAA, &text_w, &text_h);
 				_sprite_back.setCursor(LOW_X_END - text_w, row_mid + 6);
 				_sprite_back.print(low_buf);
 
@@ -576,9 +583,9 @@ bool widgetWeatherCard::redraw(uint8_t fade_amount, int8_t tab_group)
 
 				char high_buf[6];
 				snprintf(high_buf, sizeof(high_buf), "%d\xB0", d.high);
-				_sprite_back.setFreeFont(UbuntuMono_B[2]);
+				_sprite_back.setFreeFont(&UbuntuMono_Bold14pt7bAA);
 				_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
-				calc_text_size(high_buf, UbuntuMono_B[2], &text_w, &text_h);
+				calc_text_size(high_buf, &UbuntuMono_Bold14pt7bAA, &text_w, &text_h);
 				_sprite_back.setCursor(_w - padding.right - text_w, row_mid + 6);
 				_sprite_back.print(high_buf);
 			}

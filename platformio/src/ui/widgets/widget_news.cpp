@@ -1,5 +1,7 @@
 #include "ui/widgets/widget_news.h"
 
+#include "fonts/ubuntu_mono_bold_14pt_aa.h"
+#include "fonts/ubuntu_mono_bold_18pt_aa.h"
 #include "ui/theme_dashboard.h"
 
 #include <sstream>
@@ -385,6 +387,10 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 		ui_parent->_sprite_back.readImage(_x, _y, _w, _h, (uint16_t *)_sprite_back.getBuffer());
 		delay(10);
 
+		// Antialiased text only - see UbuntuMono_Bold18pt7bAA's own header
+		// comment for why this can't mix with a 1-bit font on this canvas.
+		_sprite_back.setAntialias(true);
+
 		_sprite_clean.fillRect(0, 0, _w, _h, TFT_MAGENTA);
 		_sprite_clean.fillRoundRect(0, 0, _w, _h, 14, dashboard_theme::card);
 		squixl.lcd.blendSprite(&_sprite_clean, &_sprite_back, &_sprite_back, _t, TFT_MAGENTA);
@@ -396,8 +402,8 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 		_sprite_back.fillRect(0, HEADER_H - CORNER_R, _w, CORNER_R, dashboard_theme::header_bg);
 
 		int hdr_w, hdr_h;
-		_sprite_back.setFreeFont(UbuntuMono_B[3]);
-		calc_text_size("News", UbuntuMono_B[3], &hdr_w, &hdr_h);
+		_sprite_back.setFreeFont(&UbuntuMono_Bold18pt7bAA);
+		calc_text_size("News", &UbuntuMono_Bold18pt7bAA, &hdr_w, &hdr_h);
 		_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 		_sprite_back.setCursor((_w - hdr_w) / 2, HEADER_H / 2 + hdr_h / 2);
 		_sprite_back.print("News");
@@ -417,8 +423,8 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 				msg = "NO STORIES";
 
 			int text_w, text_h;
-			_sprite_back.setFreeFont(UbuntuMono_B[3]);
-			calc_text_size(msg, UbuntuMono_B[3], &text_w, &text_h);
+			_sprite_back.setFreeFont(&UbuntuMono_Bold18pt7bAA);
+			calc_text_size(msg, &UbuntuMono_Bold18pt7bAA, &text_w, &text_h);
 			_sprite_back.setTextColor(dashboard_theme::text_secondary, -1);
 			_sprite_back.setCursor((_w - text_w) / 2, content_y0 + (content_y1 - content_y0) / 2);
 			_sprite_back.print(msg);
@@ -427,7 +433,7 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 		{
 			constexpr int16_t ATTR_GAP = 20;
 
-			std::vector<std::string> lines = wrap_text(current_headline, UbuntuMono_B[3], content_w);
+			std::vector<std::string> lines = wrap_text(current_headline, &UbuntuMono_Bold18pt7bAA, content_w);
 
 			// Bound how many lines can fit above the attribution line -
 			// headlines are short enough in practice that this rarely
@@ -443,11 +449,11 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 				lines.resize(max_lines);
 				std::string &last = lines.back();
 				int text_w, text_h;
-				calc_text_size((last + "...").c_str(), UbuntuMono_B[3], &text_w, &text_h);
+				calc_text_size((last + "...").c_str(), &UbuntuMono_Bold18pt7bAA, &text_w, &text_h);
 				while (text_w > content_w && last.length() > 1)
 				{
 					last.pop_back();
-					calc_text_size((last + "...").c_str(), UbuntuMono_B[3], &text_w, &text_h);
+					calc_text_size((last + "...").c_str(), &UbuntuMono_Bold18pt7bAA, &text_w, &text_h);
 				}
 				last += "...";
 			}
@@ -456,20 +462,20 @@ bool widgetNews::redraw(uint8_t fade_amount, int8_t tab_group)
 			int16_t block_h = (int16_t)lines.size() * line_h;
 			int16_t block_y0 = content_y0 + (content_y1 - content_y0 - block_h - ATTR_GAP - row_char_h) / 2;
 
-			_sprite_back.setFreeFont(UbuntuMono_B[3]);
+			_sprite_back.setFreeFont(&UbuntuMono_Bold18pt7bAA);
 			_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 
 			int text_w, text_h;
 			for (size_t i = 0; i < lines.size(); i++)
 			{
-				calc_text_size(lines[i].c_str(), UbuntuMono_B[3], &text_w, &text_h);
+				calc_text_size(lines[i].c_str(), &UbuntuMono_Bold18pt7bAA, &text_w, &text_h);
 				_sprite_back.setCursor((_w - text_w) / 2, block_y0 + (int16_t)i * line_h + row_char_h);
 				_sprite_back.print(lines[i].c_str());
 			}
 
 			const char *attribution = "via The New York Times";
-			_sprite_back.setFreeFont(UbuntuMono_B[2]);
-			calc_text_size(attribution, UbuntuMono_B[2], &text_w, &text_h);
+			_sprite_back.setFreeFont(&UbuntuMono_Bold14pt7bAA);
+			calc_text_size(attribution, &UbuntuMono_Bold14pt7bAA, &text_w, &text_h);
 			_sprite_back.setTextColor(dashboard_theme::text_secondary, -1);
 			_sprite_back.setCursor((_w - text_w) / 2, block_y0 + block_h + ATTR_GAP + text_h);
 			_sprite_back.print(attribution);

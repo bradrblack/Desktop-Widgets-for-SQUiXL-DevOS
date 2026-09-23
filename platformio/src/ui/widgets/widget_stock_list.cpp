@@ -1,5 +1,6 @@
 #include "ui/widgets/widget_stock_list.h"
 
+#include "fonts/ubuntu_mono_bold_18pt_aa.h"
 #include "ui/theme_dashboard.h"
 
 using json = nlohmann::json;
@@ -238,6 +239,10 @@ bool widgetStockList::redraw(uint8_t fade_amount, int8_t tab_group)
 		ui_parent->_sprite_back.readImage(_x, _y, _w, _h, (uint16_t *)_sprite_back.getBuffer());
 		delay(10);
 
+		// Antialiased text only - see UbuntuMono_Bold18pt7bAA's own header
+		// comment for why this can't mix with a 1-bit font on this canvas.
+		_sprite_back.setAntialias(true);
+
 		_sprite_clean.fillRect(0, 0, _w, _h, TFT_MAGENTA);
 		_sprite_clean.fillRoundRect(0, 0, _w, _h, 14, dashboard_theme::card);
 		squixl.lcd.blendSprite(&_sprite_clean, &_sprite_back, &_sprite_back, _t, TFT_MAGENTA);
@@ -252,8 +257,8 @@ bool widgetStockList::redraw(uint8_t fade_amount, int8_t tab_group)
 		_sprite_back.fillRect(0, HEADER_H - CORNER_R, _w, CORNER_R, dashboard_theme::header_bg);
 
 		int hdr_w, hdr_h;
-		_sprite_back.setFreeFont(UbuntuMono_B[3]);
-		calc_text_size("Markets", UbuntuMono_B[3], &hdr_w, &hdr_h);
+		_sprite_back.setFreeFont(&UbuntuMono_Bold18pt7bAA);
+		calc_text_size("Markets", &UbuntuMono_Bold18pt7bAA, &hdr_w, &hdr_h);
 		_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 		_sprite_back.setCursor((_w - hdr_w) / 2, HEADER_H / 2 + hdr_h / 2);
 		_sprite_back.print("Markets");
@@ -268,7 +273,7 @@ bool widgetStockList::redraw(uint8_t fade_amount, int8_t tab_group)
 			const StockQuote &q = quotes[i];
 			int16_t baseline_y = row_y0 + (int16_t)i * row_h + row_h / 2 + row_char_h / 2;
 
-			_sprite_back.setFreeFont(UbuntuMono_B[3]);
+			_sprite_back.setFreeFont(&UbuntuMono_Bold18pt7bAA);
 
 			_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 			_sprite_back.setCursor(padding.left, baseline_y);
@@ -278,7 +283,7 @@ bool widgetStockList::redraw(uint8_t fade_amount, int8_t tab_group)
 			{
 				_sprite_back.setTextColor(dashboard_theme::text_secondary, -1);
 				const char *waiting = wifi_controller.is_connected() ? "..." : "NO INTERNET";
-				calc_text_size(waiting, UbuntuMono_B[3], &text_w, &text_h);
+				calc_text_size(waiting, &UbuntuMono_Bold18pt7bAA, &text_w, &text_h);
 				_sprite_back.setCursor(_w - padding.right - text_w, baseline_y);
 				_sprite_back.print(waiting);
 				continue;
@@ -286,12 +291,12 @@ bool widgetStockList::redraw(uint8_t fade_amount, int8_t tab_group)
 
 			char change_buf[12];
 			snprintf(change_buf, sizeof(change_buf), "%+.1f%%", q.change_pct);
-			calc_text_size(change_buf, UbuntuMono_B[3], &text_w, &text_h);
+			calc_text_size(change_buf, &UbuntuMono_Bold18pt7bAA, &text_w, &text_h);
 			int16_t change_x = _w - padding.right - text_w;
 
 			char price_buf[16];
 			snprintf(price_buf, sizeof(price_buf), "%.2f", q.price);
-			calc_text_size(price_buf, UbuntuMono_B[3], &text_w, &text_h);
+			calc_text_size(price_buf, &UbuntuMono_Bold18pt7bAA, &text_w, &text_h);
 			int16_t price_x = change_x - 34 - text_w;
 
 			_sprite_back.setTextColor(dashboard_theme::text_primary, -1);

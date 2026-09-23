@@ -14,9 +14,15 @@ Notable changes in this fork, grouped by feature rather than by commit.
 
 - The big clock digits are now drawn as a rainbow gradient by default: a gentle gradient covering about half the hue wheel across the clock (no repeated colours), shifting a little every minute. `UM_GFX_Canvas::setRainbow()` colours antialiased glyph pixels from a 256-entry hue table inside `drawGlyphAA`. Pure magenta (`0xF81F`) is nudged off, since the screens use it as their transparent colour key.
 - New "Clock Settings" group in the web portal: a SOLID/RAINBOW toggle and a full colour picker for the solid colour used when the rainbow is off.
-- Digits are rendered natively at 88pt with real antialiasing (`UM_GFX_Canvas::drawGlyphAA()`, blending each glyph's 8-bit coverage into the background colour) instead of the previous approach of drawing a smaller bitmap font and upscaling it 2x, which looked blocky. Antialiasing is enabled only on the clock's own canvas, so no other font/widget in the app is affected.
+- Digits are rendered natively at 88pt with real antialiasing (`UM_GFX_Canvas::drawGlyphAA()`, blending each glyph's 8-bit coverage into the background colour) instead of the previous approach of drawing a smaller bitmap font and upscaling it 2x, which looked blocky.
 - Centered vertically around its configured midpoint instead of being anchored by its top edge, so changing the font size no longer requires re-tuning a manual offset.
 - Fixed the 12-hour display showing "0:mm" instead of "12:mm" at midnight - hour 0 wasn't being converted to 12 (only `hour > 12` was handled).
+
+## Antialiased Text on the Dashboard Cards
+
+Markets, Weather, Calendar, and News now render all their text antialiased too, the same way the clock does, instead of the original 1-bit fonts. Since the clock's own AA font only covered the 11 characters it needed (digits and `:`), extending this meant generating full antialiased versions of the two Ubuntu Mono Bold sizes the cards actually use (14pt and 18pt, covering the same 0x20-0xB0 range as the existing 1-bit fonts) plus the small 7pt Regular size Weather uses for precipitation percentages - `ubuntu_mono_bold_14pt_aa.h`, `_18pt_aa.h`, and `ubuntu_mono_regular_7pt_aa.h`. Generated with a small FreeType-based Python script from the same Ubuntu Mono TTFs and DPI (141) as every other font here, since no font-generation tool was checked into the repo; the output's advance widths and vertical metrics matched the existing 1-bit fonts exactly, confirming the source/DPI/point-size math was right.
+
+This cost about 250KB of flash (66.8% to 72.1% used, 1.3MB still free) - more than the ~86KB the three new fonts' raw data would suggest, because each of the four widgets ends up compiling its own private copy of whichever font(s) it references (internal linkage, no dedup across translation units at link time). That turned out to be a pre-existing pattern already true of the original 1-bit fonts (confirmed via `nm` on the build's object files) - this change just made each duplicate ~8x more expensive, since 8-bit coverage data is 8x the size of 1-bit packed data per glyph. Not worth restructuring given the flash headroom left.
 
 ## Theme
 

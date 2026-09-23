@@ -1,5 +1,7 @@
 #include "ui/widgets/widget_calendar.h"
 
+#include "fonts/ubuntu_mono_bold_14pt_aa.h"
+#include "fonts/ubuntu_mono_bold_18pt_aa.h"
 #include "ui/theme_dashboard.h"
 
 #include <algorithm>
@@ -306,6 +308,10 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 		ui_parent->_sprite_back.readImage(_x, _y, _w, _h, (uint16_t *)_sprite_back.getBuffer());
 		delay(10);
 
+		// Antialiased text only - see UbuntuMono_Bold18pt7bAA's own header
+		// comment for why this can't mix with a 1-bit font on this canvas.
+		_sprite_back.setAntialias(true);
+
 		_sprite_clean.fillRect(0, 0, _w, _h, TFT_MAGENTA);
 		_sprite_clean.fillRoundRect(0, 0, _w, _h, 14, dashboard_theme::card);
 		squixl.lcd.blendSprite(&_sprite_clean, &_sprite_back, &_sprite_back, _t, TFT_MAGENTA);
@@ -317,8 +323,8 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 		_sprite_back.fillRect(0, HEADER_H - CORNER_R, _w, CORNER_R, dashboard_theme::header_bg);
 
 		int hdr_w, hdr_h;
-		_sprite_back.setFreeFont(UbuntuMono_B[3]);
-		calc_text_size("Calendar", UbuntuMono_B[3], &hdr_w, &hdr_h);
+		_sprite_back.setFreeFont(&UbuntuMono_Bold18pt7bAA);
+		calc_text_size("Calendar", &UbuntuMono_Bold18pt7bAA, &hdr_w, &hdr_h);
 		_sprite_back.setTextColor(dashboard_theme::text_primary, -1);
 		_sprite_back.setCursor((_w - hdr_w) / 2, HEADER_H / 2 + hdr_h / 2);
 		_sprite_back.print("Calendar");
@@ -327,7 +333,7 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 
 		if (events.empty())
 		{
-			_sprite_back.setFreeFont(UbuntuMono_B[3]);
+			_sprite_back.setFreeFont(&UbuntuMono_Bold18pt7bAA);
 			_sprite_back.setTextColor(dashboard_theme::text_secondary, -1);
 			const char *msg;
 			if (!settings.config.calendar.ics_url.length())
@@ -338,7 +344,7 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 				msg = "NO UPCOMING EVENTS";
 
 			int text_w, text_h;
-			calc_text_size(msg, UbuntuMono_B[3], &text_w, &text_h);
+			calc_text_size(msg, &UbuntuMono_Bold18pt7bAA, &text_w, &text_h);
 			_sprite_back.setCursor((_w - text_w) / 2, row_y0 + row_char_h + 20);
 			_sprite_back.print(msg);
 		}
@@ -352,14 +358,14 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 				int16_t line1_y = row_y0 + (int16_t)i * row_h + row_char_h;
 				int16_t line2_y = line1_y + row_char_h + 8;
 
-				_sprite_back.setFreeFont(UbuntuMono_B[2]);
+				_sprite_back.setFreeFont(&UbuntuMono_Bold14pt7bAA);
 
 				_sprite_back.setTextColor(dashboard_theme::accent_amber, -1);
 				_sprite_back.setCursor(padding.left, line1_y);
 				_sprite_back.print(ev.date_label.c_str());
 
 				int time_w, time_h;
-				calc_text_size(ev.time_label.c_str(), UbuntuMono_B[2], &time_w, &time_h);
+				calc_text_size(ev.time_label.c_str(), &UbuntuMono_Bold14pt7bAA, &time_w, &time_h);
 				_sprite_back.setTextColor(dashboard_theme::accent_teal, -1);
 				_sprite_back.setCursor(_w - padding.right - time_w, line1_y);
 				_sprite_back.print(ev.time_label.c_str());
@@ -368,12 +374,12 @@ bool widgetCalendar::redraw(uint8_t fade_amount, int8_t tab_group)
 				// the card, rather than letting it overflow the edge.
 				std::string summary = ev.summary;
 				int text_w, text_h;
-				calc_text_size(summary.c_str(), UbuntuMono_B[2], &text_w, &text_h);
+				calc_text_size(summary.c_str(), &UbuntuMono_Bold14pt7bAA, &text_w, &text_h);
 				int16_t max_w = _w - padding.left - padding.right;
 				while (text_w > max_w && summary.length() > 1)
 				{
 					summary.pop_back();
-					calc_text_size((summary + "...").c_str(), UbuntuMono_B[2], &text_w, &text_h);
+					calc_text_size((summary + "...").c_str(), &UbuntuMono_Bold14pt7bAA, &text_w, &text_h);
 				}
 				if (summary.length() < ev.summary.length())
 					summary += "...";
